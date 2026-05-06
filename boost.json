@@ -1,0 +1,10 @@
+{
+    "agents": [
+        "gemini"
+    ],
+    "cloud": false,
+    "guidelines": true,
+    "packages": [
+        "filament/filament"
+    ]
+}
