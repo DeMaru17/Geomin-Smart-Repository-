@@ -13,4 +13,10 @@ class IsoClause extends Model
         'clause_number',
         'description',
     ];
+
+    // Relasi balik Many-to-Many ke tabel Document
+    public function documents()
+    {
+        return $this->belongsToMany(Document::class, 'document_iso_clauses');
+    }
 }
