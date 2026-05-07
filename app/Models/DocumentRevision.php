@@ -17,6 +17,7 @@ class DocumentRevision extends Model
         'change_summary',
         'qr_token',
         'uploader_id',
+        'word_file_path',
     ];
 
     // Relasi balik ke tabel Document induknya
@@ -28,5 +29,18 @@ class DocumentRevision extends Model
     public function uploader()
     {
         return $this->belongsTo(User::class, 'uploader_id');
+    }
+
+    protected static function booted()
+    {
+        static::saved(function ($revision) {
+            if (in_array($revision->status, ['Published', 'Terbit'])) {
+                static::query()
+                    ->where('document_id', $revision->document_id)
+                    ->where('id', '!=', $revision->id)
+                    ->whereIn('status', ['Published', 'Terbit'])
+                    ->update(['status' => 'Obsolete']);
+            }
+        });
     }
 }

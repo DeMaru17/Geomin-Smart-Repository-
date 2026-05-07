@@ -3,15 +3,11 @@
 namespace App\Filament\Resources\Documents\RelationManagers;
 
 use Filament\Actions\Action;
-use Filament\Actions\AssociateAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DissociateAction;
-use Filament\Actions\DissociateBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -19,9 +15,9 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
-use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Storage;
 
 class RevisionsRelationManager extends RelationManager
 {
@@ -63,11 +59,16 @@ class RevisionsRelationManager extends RelationManager
                     ])
                     ->default('Draft')
                     ->required(),
+                FileUpload::make('word_file_path')
+                    ->label('Dokumen Master (Word)')
+                    ->directory('geomin-documents/word')
+                    ->acceptedFileTypes(['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])
+                    ->helperText('Hanya dapat diunduh oleh Admin/Manajemen.'),
                 Textarea::make('change_summary')
                     ->label('Ringkasan Perubahan')
                     ->columnSpanFull(),
                 Hidden::make('uploader_id')
-                    ->default(auth()->id()),
+                    ->default(auth()->user()?->id),
             ]);
     }
 
@@ -80,22 +81,19 @@ class RevisionsRelationManager extends RelationManager
                     ->label('Rev')
                     ->sortable(),
 
-                TextColumn::make('file_path')
-                    ->label('Pratinjau')
-                    ->formatStateUsing(fn () => 'Buka Pratinjau')
-                    ->icon('heroicon-o-eye')
-                    ->color('primary')
-                    ->weight('bold')
-                    ->action(
-                        Action::make('view_pdf')
-                            ->modalHeading('Pratinjau Dokumen Mutu')
-                            ->modalContent(fn ($record) => view('filament.components.pdf-viewer', [
-                                'url' => route('pdf.view', ['id' => $record->id])
-                            ]))
-                            ->modalSubmitAction(false)
-                            ->modalCancelActionLabel('Tutup')
-                            ->modalWidth('7xl') // Atau gunakan 'screen' jika ingin maksimal
-                    ),
+                TextColumn::make('change_summary')
+                    ->label('Ringkasan Perubahan')
+                    ->limit(40) // Membatasi karakter agar tabel tidak memanjang ke bawah
+                    ->tooltip(function (TextColumn $column): ?string {
+                        $state = $column->getState();
+                        if (strlen($state) <= $column->getCharacterLimit()) {
+                            return null;
+                        }
+
+                        return $state; // Menampilkan teks lengkap saat disorot mouse
+                    })
+                    ->placeholder('Tidak ada catatan perubahan') // Teks default jika kosong
+                    ->color('gray'),
 
                 TextColumn::make('status')
                     ->label('Status')
@@ -124,7 +122,31 @@ class RevisionsRelationManager extends RelationManager
                 CreateAction::make(),
             ])
             ->actions([
-                ViewAction::make(),
+                Action::make('pratinjau')
+                    ->label('Pratinjau')
+                    ->icon('heroicon-o-eye')
+                    ->color('primary')
+                    ->url(fn ($record) => route('secure.viewer', ['id' => $record->id])),
+                Action::make('download_pdf')
+                    ->label('Unduh PDF')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('danger')
+                    ->action(function ($record) {
+                        $fileName = "{$record->document->document_number} - {$record->document->title} (Rev {$record->revision_number}).pdf";
+
+                        return response()->download(Storage::path($record->file_path), $fileName);
+                    }),
+                Action::make('download_word')
+                    ->label('Unduh Word')
+                    ->icon('heroicon-o-document-text')
+                    ->color('info')
+                    ->visible(fn ($record) => in_array(auth()->user()?->role, ['admin', 'manajemen']) && $record->word_file_path)
+                    ->action(function ($record) {
+                        $extension = pathinfo($record->word_file_path, PATHINFO_EXTENSION);
+                        $fileName = "{$record->document->document_number} - {$record->document->title} (Rev {$record->revision_number}).{$extension}";
+
+                        return response()->download(Storage::path($record->word_file_path), $fileName);
+                    }),
                 EditAction::make(),
                 DeleteAction::make(),
             ])

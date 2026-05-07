@@ -5,13 +5,14 @@ namespace App\Filament\Resources\DocumentCategories;
 use App\Filament\Resources\DocumentCategories\Pages\CreateDocumentCategory;
 use App\Filament\Resources\DocumentCategories\Pages\EditDocumentCategory;
 use App\Filament\Resources\DocumentCategories\Pages\ListDocumentCategories;
-use App\Filament\Resources\DocumentCategories\Schemas\DocumentCategoryForm;
-use App\Filament\Resources\DocumentCategories\Tables\DocumentCategoriesTable;
 use App\Models\DocumentCategory;
 use BackedEnum;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
 class DocumentCategoryResource extends Resource
@@ -26,14 +27,44 @@ class DocumentCategoryResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
+    protected static ?string $pluralModelLabel = 'Kategori Dokumen';
+
+    protected static ?string $modelLabel = 'Kategori Dokumen';
+
     public static function form(Schema $schema): Schema
     {
-        return DocumentCategoryForm::configure($schema);
+        return $schema
+            ->schema([
+                TextInput::make('code')
+                    ->label('Kode')
+                    ->required()
+                    ->placeholder('Contoh: PK, IK, F')
+                    ->maxLength(50),
+                TextInput::make('name')
+                    ->label('Nama Kategori Dokumen')
+                    ->required()
+                    ->placeholder('Contoh: Prosedur Kerja, Instruksi Kerja, Form')
+                    ->maxLength(100),
+            ]);
     }
 
     public static function table(Table $table): Table
     {
-        return DocumentCategoriesTable::configure($table);
+        return $table
+            ->columns([
+                TextColumn::make('code')
+                    ->label('Kode')
+                    ->searchable()
+                    ->sortable(),
+
+                TextColumn::make('name')
+                    ->label('Nama Kategori Dokumen')
+                    ->searchable()
+                    ->sortable(),
+            ])
+            ->actions([
+                EditAction::make()->iconButton(),
+            ]);
     }
 
     public static function getRelations(): array

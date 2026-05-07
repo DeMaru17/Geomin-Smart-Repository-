@@ -5,13 +5,14 @@ namespace App\Filament\Resources\IsoClauses;
 use App\Filament\Resources\IsoClauses\Pages\CreateIsoClause;
 use App\Filament\Resources\IsoClauses\Pages\EditIsoClause;
 use App\Filament\Resources\IsoClauses\Pages\ListIsoClauses;
-use App\Filament\Resources\IsoClauses\Schemas\IsoClauseForm;
-use App\Filament\Resources\IsoClauses\Tables\IsoClausesTable;
 use App\Models\IsoClause;
 use BackedEnum;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
 class IsoClauseResource extends Resource
@@ -26,14 +27,44 @@ class IsoClauseResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'description';
 
+    protected static ?string $pluralModelLabel = 'Klausul ISO';
+
+    protected static ?string $modelLabel = 'Klausul ISO';
+
     public static function form(Schema $schema): Schema
     {
-        return IsoClauseForm::configure($schema);
+        return $schema
+            ->schema([
+                TextInput::make('clause_number')
+                    ->label('Nomor Klausul')
+                    ->required()
+                    ->placeholder('Contoh: 4.4')
+                    ->maxLength(50),
+                TextInput::make('description')
+                    ->label('Deskripsi Klausul')
+                    ->required()
+                    ->placeholder('Contoh: Kerahasiaan')
+                    ->maxLength(255),
+            ]);
     }
 
     public static function table(Table $table): Table
     {
-        return IsoClausesTable::configure($table);
+        return $table
+            ->columns([
+                TextColumn::make('clause_number')
+                    ->label('Nomor Klausul')
+                    ->searchable()
+                    ->sortable(),
+
+                TextColumn::make('description')
+                    ->label('Deskripsi Klausul')
+                    ->searchable()
+                    ->sortable(),
+            ])
+            ->actions([
+                EditAction::make()->iconButton(),
+            ]);
     }
 
     public static function getRelations(): array

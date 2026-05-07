@@ -41,4 +41,9 @@ class Document extends Model
     {
         return $this->hasMany(DocumentRevision::class);
     }
+
+    public function revisions_latest()
+    {
+        return $this->hasOne(DocumentRevision::class)->latestOfMany();
+    }
 }
