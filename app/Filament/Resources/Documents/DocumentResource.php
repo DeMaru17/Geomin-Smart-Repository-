@@ -2,12 +2,17 @@
 
 namespace App\Filament\Resources\Documents;
 
+use App\Filament\Pages\CompareVersions;
 use App\Filament\Resources\Documents\Pages\CreateDocument;
 use App\Filament\Resources\Documents\Pages\EditDocument;
 use App\Filament\Resources\Documents\Pages\ListDocuments;
 use App\Models\Document;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\Action as InfolistAction;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -31,11 +36,6 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Storage;
-use Filament\Actions\Action;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
-use Filament\Actions\ActionGroup;
-
 
 class DocumentResource extends Resource
 {
@@ -284,7 +284,7 @@ class DocumentResource extends Resource
                                             ->label('Bandingkan Versi')
                                             ->icon('heroicon-m-arrows-right-left')
                                             ->color('gray')
-                                            ->action(fn () => null),
+                                            ->url(fn ($record) => CompareVersions::getUrl().'?document_id='.$record->id),
 
                                         InfolistAction::make('qr_code')
                                             ->label('QR Code')
