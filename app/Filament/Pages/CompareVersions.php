@@ -73,19 +73,21 @@ class CompareVersions extends Page implements HasForms
 
                             Select::make('old_revision_id')
                                 ->label('Versi Lama (Kiri)')
-                                ->options(fn (Get $get) =>
+                                ->options(
+                                    fn(Get $get) =>
                                     DocumentRevision::query()
                                         ->where('document_id', $get('document_id'))
                                         ->pluck('revision_number', 'id')
-                                        ->map(fn ($val, $key) => "Rev. $val")
+                                        ->map(fn($val, $key) => "Rev. $val")
                                 ),
 
                             Select::make('new_revision_id')
                                 ->label('Versi Baru (Kanan)')
-                                ->options(fn (Get $get) => DocumentRevision::query()
-                                    ->where('document_id', $get('document_id'))
-                                    ->pluck('revision_number', 'id')
-                                    ->map(fn ($val, $key) => "Rev. $val")
+                                ->options(
+                                    fn(Get $get) => DocumentRevision::query()
+                                        ->where('document_id', $get('document_id'))
+                                        ->pluck('revision_number', 'id')
+                                        ->map(fn($val, $key) => "Rev. $val")
                                 ),
 
                             Actions::make([
@@ -96,7 +98,7 @@ class CompareVersions extends Page implements HasForms
                                     ->icon('heroicon-m-arrow-path-rounded-square')
                                     ->action('generateDiff'),
                             ])
-                            ->extraAttributes(['class' => 'justify-center w-full mt-4']),
+                                ->extraAttributes(['class' => 'justify-center w-full mt-4']),
                         ]),
                     ]),
             ])
@@ -127,7 +129,11 @@ class CompareVersions extends Page implements HasForms
             'spacesToNbsp' => false,
         ];
 
-        $this->diffHtml = DiffHelper::calculate($oldText, $newText, 'SideBySide', [], $rendererOptions);
+        $diffOptions = [
+            'context' => PHP_INT_MAX, // Tampilkan semua baris, bukan hanya sekitar perubahan
+        ];
+
+        $this->diffHtml = DiffHelper::calculate($oldText, $newText, 'SideBySide', $diffOptions, $rendererOptions);
 
         $this->addedCount = substr_count($this->diffHtml, 'diff-added');
         $this->removedCount = substr_count($this->diffHtml, 'diff-deleted');

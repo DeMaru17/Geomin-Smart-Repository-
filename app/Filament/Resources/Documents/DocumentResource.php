@@ -7,6 +7,7 @@ use App\Filament\Resources\Documents\Pages\CreateDocument;
 use App\Filament\Resources\Documents\Pages\EditDocument;
 use App\Filament\Resources\Documents\Pages\ListDocuments;
 use App\Models\Document;
+use App\Services\PdfStamperService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\Action as InfolistAction;
@@ -18,6 +19,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Grid;
@@ -36,6 +38,8 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\HtmlString;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class DocumentResource extends Resource
 {
@@ -95,8 +99,7 @@ class DocumentResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->headerActions([
-            ])
+            ->headerActions([])
             ->description('Repositori dokumen internal dan eksternal')
 
             ->columns([
@@ -128,7 +131,7 @@ class DocumentResource extends Resource
                 TextColumn::make('revisions_latest.status')
                     ->label('Status')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn(string $state): string => match ($state) {
                         'Published', 'Terbit' => 'success',
                         'Draft' => 'gray',
                         'In_Review' => 'warning',
@@ -191,7 +194,7 @@ class DocumentResource extends Resource
                         ->openUrlInNewTab(),
                     ViewAction::make(),
                     EditAction::make()
-                        ->visible(fn () => in_array(auth()->user()?->role, ['admin', 'manajemen'])),
+                        ->visible(fn() => in_array(auth()->user()?->role, ['admin', 'manajemen'])),
                 ])->icon('heroicon-m-ellipsis-vertical')
                     ->tooltip('Aksi'),
             ]);
@@ -223,7 +226,7 @@ class DocumentResource extends Resource
                                             TextEntry::make('revisions_latest.status')
                                                 ->hiddenLabel()
                                                 ->badge()
-                                                ->color(fn (?string $state): string => match ($state) {
+                                                ->color(fn(?string $state): string => match ($state) {
                                                     'Published', 'Terbit' => 'success',
                                                     'Draft' => 'gray',
                                                     'In_Review' => 'warning',
@@ -258,13 +261,13 @@ class DocumentResource extends Resource
                                                 ->hiddenLabel()
                                                 ->icon('heroicon-m-clock')
                                                 ->color('gray')
-                                                ->formatStateUsing(fn ($state) => "Masa simpan: {$state} bulan"),
+                                                ->formatStateUsing(fn($state) => "Masa simpan: {$state} bulan"),
 
                                             TextEntry::make('revisions_latest.revision_number')
                                                 ->hiddenLabel()
                                                 ->icon('heroicon-m-arrow-path')
                                                 ->color('gray')
-                                                ->formatStateUsing(fn ($state) => 'Rev. '.str_pad($state ?? '0', 2, '0', STR_PAD_LEFT)),
+                                                ->formatStateUsing(fn($state) => 'Rev. ' . str_pad($state ?? '0', 2, '0', STR_PAD_LEFT)),
                                         ]),
 
                                     // Baris 4: Klausul ISO
@@ -284,21 +287,68 @@ class DocumentResource extends Resource
                                             ->label('Bandingkan Versi')
                                             ->icon('heroicon-m-arrows-right-left')
                                             ->color('gray')
-                                            ->url(fn ($record) => CompareVersions::getUrl().'?document_id='.$record->id),
+                                            ->url(fn($record) => CompareVersions::getUrl() . '?document_id=' . $record->id),
 
-                                        InfolistAction::make('qr_code')
-                                            ->label('QR Code')
+                                        InfolistAction::make('cetak_qr_code')
+                                            ->label('Cetak QR Code')
                                             ->icon('heroicon-m-qr-code')
                                             ->color('gray')
-                                            ->action(fn () => null),
+                                            ->visible(fn() => auth()->user()?->role === 'admin')
+                                            ->modalHeading('Cetak QR Code')
+                                            ->modalContent(function ($record) {
+                                                $url = config('app.url') . '/dokumen/aktif/' . $record->document_number;
+                                                $qrSvg = \SimpleSoftwareIO\QrCode\Facades\QrCode::size(250)->generate($url);
+                                                $namaDokumen = $record->document_number . ' - ' . $record->title;
+
+                                                $html = <<<HTML
+                                                    <div>
+                                                        <div id="qr-print-area" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5rem; padding: 2rem; text-align: center;">
+
+                                                            <div style="display: block;">
+                                                                {$qrSvg}
+                                                            </div>
+
+                                                            <div style="font-size: 1.25rem; color: #000; font-family: sans-serif; font-weight: bold; max-width: 320px; word-wrap: break-word; line-height: 1.4;">
+                                                                {$namaDokumen}
+                                                            </div>
+
+                                                        </div>
+
+                                                        <div style="text-align: center; margin-top: 1rem;">
+                                                            <button type="button"
+                                                                x-data
+                                                                @click="
+                                                                    let printWin = window.open('', '', 'width=800,height=800');
+                                                                    printWin.document.write('<html><head><title>Cetak QR Code</title>');
+                                                                    printWin.document.write('<style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;} svg{display:block;}</style>');
+                                                                    printWin.document.write('</head><body>');
+                                                                    // Gunakan outerHTML agar style flexbox container ikut tercetak
+                                                                    printWin.document.write(document.getElementById('qr-print-area').outerHTML);
+                                                                    printWin.document.write('</body></html>');
+                                                                    printWin.document.close();
+                                                                    printWin.focus();
+                                                                    setTimeout(() => { printWin.print(); printWin.close(); }, 250);
+                                                                "
+                                                                class="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm bg-primary-600 hover:bg-primary-500">
+                                                                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M7.875 1.5C6.839 1.5 6 2.34 6 3.375v2.99c-.426.053-.851.11-1.274.174-1.454.218-2.476 1.483-2.476 2.917v6.294a3 3 0 0 0 3 3h.27l-.092 1.086a1.875 1.875 0 0 0 1.87 2.04h9.405a1.875 1.875 0 0 0 1.87-2.04l-.093-1.086h.27a3 3 0 0 0 3-3V9.456c0-1.434-1.022-2.7-2.476-2.917A48.716 48.716 0 0 0 18 6.366V3.375c0-1.036-.84-1.875-1.875-1.875h-8.25ZM16.5 6.205v-2.83A.375.375 0 0 0 16.125 3h-8.25a.375.375 0 0 0-.375.375v2.83a49.353 49.353 0 0 1 9 0Zm-.217 8.265c.178.018.317.16.333.337l.526 5.568a.375.375 0 0 1-.374.41H7.232a.375.375 0 0 1-.374-.41l.526-5.568a.345.345 0 0 1 .333-.337 47.636 47.636 0 0 1 8.566 0Z" clip-rule="evenodd"/></svg>
+                                                                Cetak
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    HTML;
+                                                return new \Illuminate\Support\HtmlString($html);
+                                            })
+                                            ->modalFooterActions([])
+                                            ->modalSubmitAction(false)
+                                            ->action(fn() => null),
 
                                         // Tombol Edit
                                         InfolistAction::make('edit')
                                             ->label('Edit')
                                             ->icon('heroicon-m-pencil')
                                             ->color('primary')
-                                            ->visible(fn () => in_array(auth()->user()?->role, ['admin', 'manajemen']))
-                                            ->url(fn ($record) => EditDocument::getUrl(['record' => $record])),
+                                            ->visible(fn() => in_array(auth()->user()?->role, ['admin', 'manajemen']))
+                                            ->url(fn($record) => EditDocument::getUrl(['record' => $record])),
 
                                         InfolistAction::make('buka_dokumen')
                                             ->label('Buka Dokumen')
@@ -319,7 +369,7 @@ class DocumentResource extends Resource
                                             })
                                             ->openUrlInNewTab(),
                                     ])
-                                    // Mendorong seluruh barisan tombol rata kanan (End)
+                                        // Mendorong seluruh barisan tombol rata kanan (End)
                                         ->alignment(Alignment::End),
                                 ])->columnSpan(['lg' => 6]),
 
@@ -343,7 +393,7 @@ class DocumentResource extends Resource
                                                     Grid::make(2)->schema([
                                                         TextEntry::make('revisions_latest.revision_number')
                                                             ->label('Nomor Revisi')
-                                                            ->formatStateUsing(fn ($state) => 'Rev. '.str_pad($state ?? '0', 2, '0', STR_PAD_LEFT)),
+                                                            ->formatStateUsing(fn($state) => 'Rev. ' . str_pad($state ?? '0', 2, '0', STR_PAD_LEFT)),
 
                                                         TextEntry::make('revisions_latest.created_at')
                                                             ->label('Diterbitkan')
@@ -362,20 +412,20 @@ class DocumentResource extends Resource
                                                     Grid::make(3)->schema([
                                                         TextEntry::make('revisions_count')
                                                             ->hiddenLabel()
-                                                            ->state(fn ($record) => $record->revisions()->count())
-                                                            ->formatStateUsing(fn ($state) => "<div class='text-center'><span class='text-3xl font-bold'>{$state}</span><br><span class='text-sm text-gray-500'>Total Revisi</span></div>")
+                                                            ->state(fn($record) => $record->revisions()->count())
+                                                            ->formatStateUsing(fn($state) => "<div class='text-center'><span class='text-3xl font-bold'>{$state}</span><br><span class='text-sm text-gray-500'>Total Revisi</span></div>")
                                                             ->html(),
 
                                                         TextEntry::make('total_akses')
                                                             ->hiddenLabel()
                                                             ->default(2)
-                                                            ->formatStateUsing(fn ($state) => "<div class='text-center'><span class='text-3xl font-bold'>{$state}</span><br><span class='text-sm text-gray-500'>Total Akses</span></div>")
+                                                            ->formatStateUsing(fn($state) => "<div class='text-center'><span class='text-3xl font-bold'>{$state}</span><br><span class='text-sm text-gray-500'>Total Akses</span></div>")
                                                             ->html(),
 
                                                         TextEntry::make('permintaan_revisi')
                                                             ->hiddenLabel()
                                                             ->default(1)
-                                                            ->formatStateUsing(fn ($state) => "<div class='text-center'><span class='text-3xl font-bold'>{$state}</span><br><span class='text-sm text-gray-500'>Permintaan Revisi</span></div>")
+                                                            ->formatStateUsing(fn($state) => "<div class='text-center'><span class='text-3xl font-bold'>{$state}</span><br><span class='text-sm text-gray-500'>Permintaan Revisi</span></div>")
                                                             ->html(),
                                                     ]),
                                                 ]),
@@ -418,7 +468,7 @@ class DocumentResource extends Resource
                             ]),
 
                         Tab::make('Riwayat Revisi')
-                            ->badge(fn ($record) => $record->revisions()->count())
+                            ->badge(fn($record) => $record->revisions()->count())
                             ->schema([
                                 RepeatableEntry::make('revisions')
                                     ->hiddenLabel()
@@ -426,7 +476,7 @@ class DocumentResource extends Resource
                                         TextEntry::make('revision_number')->label('Rev.')->weight('bold'),
                                         TextEntry::make('status')
                                             ->badge()
-                                            ->color(fn ($state) => match ($state) {
+                                            ->color(fn($state) => match ($state) {
                                                 'Published', 'Terbit' => 'success',
                                                 'Obsolete' => 'danger',
                                                 'Draft' => 'gray',
@@ -443,25 +493,75 @@ class DocumentResource extends Resource
                                                 ->label('Pratinjau')
                                                 ->icon('heroicon-m-eye')
                                                 ->color('primary')
-                                                ->url(fn ($record) => route('secure.viewer', ['id' => $record->id]))
+                                                ->url(fn($record) => route('secure.viewer', ['id' => $record->id]))
                                                 ->openUrlInNewTab(),
 
                                             InfolistAction::make('unduh_pdf')
                                                 ->label('PDF')
                                                 ->icon('heroicon-m-arrow-down-tray')
                                                 ->color('danger')
-                                                ->visible(fn () => in_array(auth()->user()?->role, ['admin', 'manajemen']))
-                                                ->action(fn ($record) => response()->download(Storage::path($record->file_path), "{$record->document->document_number} - {$record->document->title} - Rev {$record->revision_number}.pdf")),
+                                                ->visible(fn() => in_array(auth()->user()?->role, ['admin', 'manajemen']))
+                                                ->action(fn($record) => response()->download(Storage::path($record->file_path), "{$record->document->document_number} - {$record->document->title} - Rev {$record->revision_number}.pdf")),
 
                                             InfolistAction::make('unduh_word')
                                                 ->label('Word')
                                                 ->icon('heroicon-m-document-text')
                                                 ->color('info')
-                                                ->visible(fn ($record) => in_array(auth()->user()?->role, ['admin', 'manajemen']) && $record->word_file_path)
+                                                ->visible(fn($record) => in_array(auth()->user()?->role, ['admin', 'manajemen']) && $record->word_file_path)
                                                 ->action(function ($record) {
                                                     $ext = pathinfo($record->word_file_path, PATHINFO_EXTENSION);
 
                                                     return response()->download(Storage::path($record->word_file_path), "{$record->document->document_number} - {$record->document->title} - Rev {$record->revision_number}.{$ext}");
+                                                }),
+
+                                            InfolistAction::make('terkendali')
+                                                ->label('Terkendali')
+                                                ->icon('heroicon-m-printer')
+                                                ->color('success')
+                                                ->visible(fn() => in_array(auth()->user()?->role, ['admin', 'manajemen']))
+                                                ->action(function ($record) {
+                                                    if (empty($record->file_path) || ! Storage::exists($record->file_path)) {
+                                                        Notification::make()
+                                                            ->title('Gagal')
+                                                            ->body('File PDF tidak tersedia untuk revisi ini.')
+                                                            ->danger()
+                                                            ->send();
+
+                                                        return;
+                                                    }
+
+                                                    $pdfContent = app(PdfStamperService::class)->stampControlled($record);
+                                                    $filename = "{$record->document->document_number} - {$record->document->title} (Rev {$record->revision_number}) - Controlled.pdf";
+
+                                                    return response()->streamDownload(function () use ($pdfContent) {
+                                                        echo $pdfContent;
+                                                    }, $filename, [
+                                                        'Content-Type' => 'application/pdf',
+                                                    ]);
+                                                }),
+
+                                            InfolistAction::make('tidak_terkendali')
+                                                ->label('Tidak Terkendali')
+                                                ->icon('heroicon-m-arrow-down-tray')
+                                                ->color('info')
+                                                ->visible(fn($record) => in_array(auth()->user()?->role, ['admin', 'manajemen']) && ! empty($record->file_path))
+                                                ->action(function ($record) {
+                                                    try {
+                                                        $pdfContent = app(PdfStamperService::class)->stampUncontrolled($record);
+                                                        $filename = "{$record->document->document_number} - {$record->document->title} (Rev {$record->revision_number}) - Uncontrolled.pdf";
+
+                                                        return response()->streamDownload(function () use ($pdfContent) {
+                                                            echo $pdfContent;
+                                                        }, $filename, [
+                                                            'Content-Type' => 'application/pdf',
+                                                        ]);
+                                                    } catch (\RuntimeException $e) {
+                                                        Notification::make()
+                                                            ->title('Gagal')
+                                                            ->body('Gagal membuat PDF tidak terkendali')
+                                                            ->danger()
+                                                            ->send();
+                                                    }
                                                 }),
                                         ]),
                                     ])

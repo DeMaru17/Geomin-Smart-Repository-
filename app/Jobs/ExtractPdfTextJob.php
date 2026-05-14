@@ -42,6 +42,10 @@ class ExtractPdfTextJob implements ShouldQueue
                 ->setPdf($absolutePath)
                 ->text();
 
+            // 0. Pastikan teks valid UTF-8 (pdftotext bisa menghasilkan byte non-UTF-8)
+            $text = mb_convert_encoding($text, 'UTF-8', 'UTF-8');
+            $text = preg_replace('/[^\x{0009}\x{000A}\x{000D}\x{0020}-\x{D7FF}\x{E000}-\x{FFFD}\x{10000}-\x{10FFFF}]/u', '', $text);
+
             // 1. Ubah spasi/tab yang berlebih menjadi 1 spasi biasa
             $cleanText = preg_replace('/[ \t]+/', ' ', $text);
             // 2. Hapus jarak enter yang terlalu banyak (maksimal 2 enter berurutan)
@@ -53,10 +57,9 @@ class ExtractPdfTextJob implements ShouldQueue
             $revision->update([
                 'extracted_text' => $cleanText,
             ]);
-
         } catch (\Exception $e) {
             // Jika gagal, catat di log Laravel agar bisa diinvestigasi
-            Log::error("Gagal mengekstrak teks PDF untuk Revisi ID {$this->revisionId}: ".$e->getMessage());
+            Log::error("Gagal mengekstrak teks PDF untuk Revisi ID {$this->revisionId}: " . $e->getMessage());
         }
     }
 }

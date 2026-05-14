@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Jobs\ExtractPdfTextJob;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class DocumentRevision extends Model
 {
@@ -35,6 +36,23 @@ class DocumentRevision extends Model
 
     protected static function booted()
     {
+        static::creating(function ($revision) {
+            if (empty($revision->qr_token)) {
+                $attempts = 0;
+                do {
+                    $token = Str::random(16);
+                    $exists = static::where('qr_token', $token)->exists();
+                    $attempts++;
+                } while ($exists && $attempts < 3);
+
+                if ($exists) {
+                    throw new \RuntimeException('Failed to generate unique QR token after 3 attempts.');
+                }
+
+                $revision->qr_token = $token;
+            }
+        });
+
         static::saved(function ($revision) {
             if (in_array($revision->status, ['Published', 'Terbit'])) {
                 static::query()
