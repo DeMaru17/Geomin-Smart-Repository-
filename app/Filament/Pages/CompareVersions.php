@@ -74,7 +74,6 @@ class CompareVersions extends Page implements HasForms
                             Select::make('old_revision_id')
                                 ->label('Versi Lama (Kiri)')
                                 ->options(fn (Get $get) =>
-                                    // Menggunakan query() agar Intelephense VS Code tidak error
                                     DocumentRevision::query()
                                         ->where('document_id', $get('document_id'))
                                         ->pluck('revision_number', 'id')

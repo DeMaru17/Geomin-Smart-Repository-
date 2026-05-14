@@ -83,16 +83,16 @@ class RevisionsRelationManager extends RelationManager
 
                 TextColumn::make('change_summary')
                     ->label('Ringkasan Perubahan')
-                    ->limit(40) // Membatasi karakter agar tabel tidak memanjang ke bawah
+                    ->limit(40)
                     ->tooltip(function (TextColumn $column): ?string {
                         $state = $column->getState();
                         if (strlen($state) <= $column->getCharacterLimit()) {
                             return null;
                         }
 
-                        return $state; // Menampilkan teks lengkap saat disorot mouse
+                        return $state;
                     })
-                    ->placeholder('Tidak ada catatan perubahan') // Teks default jika kosong
+                    ->placeholder('Tidak ada catatan perubahan') 
                     ->color('gray'),
 
                 TextColumn::make('status')
