@@ -36,3 +36,7 @@ Route::get('/dokumen/aktif/{document_number}', DynamicQrController::class)
 Route::get('/validasi-cetak/{qr_token}', StaticQrController::class)
     ->name('validasi.cetak')
     ->middleware(['auth']);
+
+Route::get('/masuk-sistem', function () {
+    return redirect(filament()->getLoginUrl());
+})->name('login');
