@@ -70,13 +70,13 @@
             <p class="text-base font-medium text-gray-800">{{ $published_date }}</p>
         </div>
 
-        {{-- Buka Dokumen Button (only shown for Published/Terbit statuses) --}}
+        {{-- Buka Dokumen Button (only shown for Published/Terbit statuses)
         @if ($show_viewer_button)
             <a href="{{ route('secure.viewer', ['id' => $revision_id]) }}"
                 class="block w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200">
                 Buka Dokumen
             </a>
-        @endif
+        @endif --}}
 
         {{-- Footer --}}
         <p class="text-xs text-gray-400 text-center mt-6">

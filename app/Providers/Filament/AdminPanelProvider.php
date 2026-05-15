@@ -30,6 +30,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandName('Geomin Smart Repository')
             ->brandLogo(asset('logo-antam.png'))
             ->brandLogoHeight('3rem')
+            ->favicon(asset('favicon.ico'))
             ->sidebarCollapsibleOnDesktop()
             ->login()
             ->colors([

@@ -34,8 +34,7 @@ Route::get('/dokumen/aktif/{document_number}', DynamicQrController::class)
 
 // 4. Route untuk Static QR - halaman validasi cetak berdasarkan qr_token
 Route::get('/validasi-cetak/{qr_token}', StaticQrController::class)
-    ->name('validasi.cetak')
-    ->middleware(['auth']);
+    ->name('validasi.cetak');
 
 Route::get('/masuk-sistem', function () {
     return redirect(filament()->getLoginUrl());
