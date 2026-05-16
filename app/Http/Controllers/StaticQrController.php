@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DocumentDistributionLog;
 use App\Models\DocumentRevision;
 
 class StaticQrController extends Controller
@@ -16,6 +17,17 @@ class StaticQrController extends Controller
         if (! $revision) {
             abort(404);
         }
+
+        // Log verifikasi via QR Statis (Skenario C)
+        DocumentDistributionLog::create([
+            'user_id' => null,
+            'recipient_name' => 'Auditor / Guest',
+            'purpose' => 'Verifikasi keabsahan dokumen fisik',
+            'action' => 'Verifikasi Fisik (QR)',
+            'is_qr_access' => true,
+            'document_revision_id' => $revision->id,
+            'accessed_at' => now(),
+        ]);
 
         $revision->load('document');
 
