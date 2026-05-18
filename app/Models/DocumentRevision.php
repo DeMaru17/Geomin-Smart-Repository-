@@ -16,12 +16,20 @@ class DocumentRevision extends Model
         'revision_number',
         'file_path',
         'status',
+        'revision_date',
         'change_summary',
         'qr_token',
         'uploader_id',
         'word_file_path',
         'extracted_text',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'revision_date' => 'date',
+        ];
+    }
 
     // Relasi balik ke tabel Document induknya
     public function document()

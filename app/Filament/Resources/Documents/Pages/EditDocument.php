@@ -16,4 +16,14 @@ class EditDocument extends EditRecord
             DeleteAction::make(),
         ];
     }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        if (empty($data['is_external'])) {
+            $data['publication_year'] = null;
+            $data['remarks'] = null;
+        }
+
+        return $data;
+    }
 }

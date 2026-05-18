@@ -8,6 +8,7 @@ use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -22,6 +23,8 @@ use Illuminate\Support\Facades\Storage;
 class RevisionsRelationManager extends RelationManager
 {
     protected static string $relationship = 'revisions';
+
+    protected static ?string $modelLabel = 'Revisi';
 
     public function form(Schema $schema): Schema
     {
@@ -64,6 +67,11 @@ class RevisionsRelationManager extends RelationManager
                     ->directory('geomin-documents/word')
                     ->acceptedFileTypes(['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])
                     ->helperText('Hanya dapat diunduh oleh Admin/Manajemen.'),
+                DatePicker::make('revision_date')
+                    ->label('Tanggal Revisi Aktual')
+                    ->default(now())
+                    ->required()
+                    ->helperText('Tanggal dokumen fisik disahkan (bisa berbeda dengan tanggal unggah).'),
                 Textarea::make('change_summary')
                     ->label('Ringkasan Perubahan')
                     ->columnSpanFull(),
@@ -92,13 +100,13 @@ class RevisionsRelationManager extends RelationManager
 
                         return $state;
                     })
-                    ->placeholder('Tidak ada catatan perubahan') 
+                    ->placeholder('Tidak ada catatan perubahan')
                     ->color('gray'),
 
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn(string $state): string => match ($state) {
                         'Draft' => 'gray',
                         'In_Review' => 'warning',
                         'Approved' => 'success',
@@ -106,6 +114,11 @@ class RevisionsRelationManager extends RelationManager
                         'Obsolete' => 'danger',
                         default => 'primary',
                     }),
+
+                TextColumn::make('revision_date')
+                    ->label('Tanggal Revisi')
+                    ->date('d M Y')
+                    ->sortable(),
 
                 TextColumn::make('uploader.name')
                     ->label('Diunggah Oleh'),
@@ -119,14 +132,14 @@ class RevisionsRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                CreateAction::make(),
+                CreateAction::make()->label('Tambah Dokumen Revisi'),
             ])
             ->actions([
                 Action::make('pratinjau')
                     ->label('Pratinjau')
                     ->icon('heroicon-o-eye')
                     ->color('primary')
-                    ->url(fn ($record) => route('secure.viewer', ['id' => $record->id])),
+                    ->url(fn($record) => route('secure.viewer', ['id' => $record->id])),
                 Action::make('download_pdf')
                     ->label('Unduh PDF')
                     ->icon('heroicon-o-arrow-down-tray')
@@ -140,7 +153,7 @@ class RevisionsRelationManager extends RelationManager
                     ->label('Unduh Word')
                     ->icon('heroicon-o-document-text')
                     ->color('info')
-                    ->visible(fn ($record) => in_array(auth()->user()?->role, ['admin', 'manajemen']) && $record->word_file_path)
+                    ->visible(fn($record) => in_array(auth()->user()?->role, ['admin', 'manajemen']) && $record->word_file_path)
                     ->action(function ($record) {
                         $extension = pathinfo($record->word_file_path, PATHINFO_EXTENSION);
                         $fileName = "{$record->document->document_number} - {$record->document->title} (Rev {$record->revision_number}).{$extension}";

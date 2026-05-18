@@ -7,6 +7,7 @@ use App\Filament\Resources\Documents\Pages\EditDocument;
 use App\Models\DocumentDistributionLog;
 use App\Services\PdfStamperService;
 use Filament\Actions\Action as InfolistAction;
+use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 
@@ -18,12 +19,30 @@ class HeaderActions
     public static function make(): array
     {
         return [
-            self::unduhTidakTerkendaliAction(),
-            self::cetakTerkendaliAction(),
+            // Urutan terbalik karena Alignment::End merender dari kanan ke kiri
+            // Kanan: utilitas (admin tools)
+            ActionGroup::make([
+                self::editAction(),
+                self::bandingkanVersiAction(),
+                self::cetakQrCodeAction(),
+            ])
+                ->label('Lainnya')
+                ->icon('heroicon-m-ellipsis-vertical')
+                ->color('gray')
+                ->button(),
+
+            // Tengah: cetak & unduh (menghasilkan file PDF)
+            ActionGroup::make([
+                self::cetakTerkendaliAction(),
+                self::unduhTidakTerkendaliAction(),
+            ])
+                ->label('Cetak / Unduh')
+                ->icon('heroicon-m-printer')
+                ->color('success')
+                ->button(),
+
+            // Kiri: buka dokumen (aksi utama)
             self::bukaDokumenAction(),
-            self::bandingkanVersiAction(),
-            self::cetakQrCodeAction(),
-            self::editAction(),
         ];
     }
 

@@ -44,7 +44,7 @@ class StaticQrController extends Controller
             'document_title' => $revision->document->title,
             'revision_number' => $revision->revision_number,
             'status' => $status,
-            'published_date' => $revision->created_at->format('d M Y'),
+            'published_date' => ($revision->revision_date ?? $revision->created_at)->format('d M Y'),
             'revision_id' => $revision->id,
             'show_viewer_button' => $showViewerButton,
         ]);

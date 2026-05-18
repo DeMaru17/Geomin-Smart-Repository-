@@ -15,6 +15,8 @@ class Document extends Model
         'category_id',
         'department_id',
         'is_external',
+        'publication_year',
+        'remarks',
         'retention_period_months',
     ];
 
