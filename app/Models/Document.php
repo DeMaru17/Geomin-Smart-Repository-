@@ -48,4 +48,10 @@ class Document extends Model
     {
         return $this->hasOne(DocumentRevision::class)->latestOfMany();
     }
+
+    // Relasi ke tabel DocumentReview (1 Dokumen punya Banyak Review)
+    public function reviews()
+    {
+        return $this->hasMany(DocumentReview::class);
+    }
 }

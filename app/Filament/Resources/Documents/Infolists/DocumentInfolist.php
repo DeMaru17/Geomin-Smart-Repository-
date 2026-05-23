@@ -163,10 +163,58 @@ class DocumentInfolist
                                         Section::make('Kaji Ulang Berikutnya')
                                             ->icon('heroicon-m-calendar')
                                             ->schema([
-                                                TextEntry::make('kaji_ulang')
-                                                    ->hiddenLabel()
-                                                    ->default('Belum ada jadwal kaji ulang')
-                                                    ->color('warning'),
+                                                TextEntry::make('next_review_due')
+                                                    ->label('Tenggat Kaji Ulang')
+                                                    ->state(function ($record) {
+                                                        $service = app(\App\Services\DocumentReviewService::class);
+
+                                                        return $service->getDueDate($record)->format('d M Y');
+                                                    })
+                                                    ->icon('heroicon-m-calendar-days'),
+                                                TextEntry::make('days_remaining')
+                                                    ->label('Sisa Waktu')
+                                                    ->badge()
+                                                    ->state(function ($record) {
+                                                        $service = app(\App\Services\DocumentReviewService::class);
+                                                        $days = $service->getDaysRemaining($record);
+
+                                                        if ($days < 0) {
+                                                            return 'Terlewat ' . abs($days) . ' hari';
+                                                        }
+
+                                                        return $days . ' hari lagi';
+                                                    })
+                                                    ->color(function ($record) {
+                                                        $service = app(\App\Services\DocumentReviewService::class);
+                                                        $days = $service->getDaysRemaining($record);
+
+                                                        if ($days < 0) {
+                                                            return 'danger';
+                                                        }
+
+                                                        if ($days <= 60) {
+                                                            return 'warning';
+                                                        }
+
+                                                        return 'success';
+                                                    }),
+                                                TextEntry::make('last_review_evaluation')
+                                                    ->label('Evaluasi Terakhir')
+                                                    ->badge()
+                                                    ->state(fn($record) => $record->reviews->sortByDesc('review_date')->first()?->evaluation_status ?? 'Belum pernah dikaji')
+                                                    ->color(fn($record) => match ($record->reviews->sortByDesc('review_date')->first()?->evaluation_status) {
+                                                        'Dipertahankan' => 'success',
+                                                        'Perlu direvisi' => 'warning',
+                                                        'Perlu diperbaharui' => 'info',
+                                                        'Perlu ditarik' => 'warning',
+                                                        'Perlu dimusnahkan' => 'danger',
+                                                        default => 'gray',
+                                                    }),
+                                                TextEntry::make('last_review_date')
+                                                    ->label('Kaji Ulang Terakhir')
+                                                    ->state(fn($record) => $record->reviews->sortByDesc('review_date')->first()?->review_date?->format('d M Y') ?? 'Belum pernah')
+                                                    ->icon('heroicon-m-clock')
+                                                    ->color('gray'),
                                             ])->extraAttributes(['class' => 'border-warning-500 bg-warning-50/50']),
                                     ])->columnSpan(['lg' => 1]),
                                 ]),

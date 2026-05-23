@@ -29,6 +29,15 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
+            'jenis_kelamin' => fake()->randomElement(['Laki-laki', 'Perempuan']),
+            'role' => 'personil',
+            'jabatan' => fake()->randomElement([
+                'analis',
+                'preparator',
+                'mekanik',
+                'admin',
+                'manajemen',
+            ]),
             'remember_token' => Str::random(10),
         ];
     }
@@ -38,8 +47,30 @@ class UserFactory extends Factory
      */
     public function unverified(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn(array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    /**
+     * Set user as admin role.
+     */
+    public function admin(): static
+    {
+        return $this->state(fn(array $attributes) => [
+            'role' => 'admin',
+            'jabatan' => 'admin',
+        ]);
+    }
+
+    /**
+     * Set user as manajemen role.
+     */
+    public function manajemen(): static
+    {
+        return $this->state(fn(array $attributes) => [
+            'role' => 'manajemen',
+            'jabatan' => 'manajemen',
         ]);
     }
 }

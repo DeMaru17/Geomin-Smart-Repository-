@@ -69,10 +69,12 @@ class StaticQrValidationStatusMappingPropertyTest extends TestCase
      * - If status is Published or Terbit, the validation page SHALL display status "Valid"
      * - If status is Obsolete, the validation page SHALL display status "Obsolete"
      * - If status is Draft, In_Review, or Approved, the validation page SHALL display "Belum Terbit"
-     *   and SHALL NOT display the Secure Viewer navigation button
+     *
+     * Note: The "Buka Dokumen" button is intentionally disabled and the route
+     * does not require authentication (public access for QR validation).
      */
     #[DataProvider('statusMappingProvider')]
-    public function test_status_maps_to_correct_label(string $status, string $expectedLabel, bool $shouldShowButton): void
+    public function test_status_maps_to_correct_label(string $status, string $expectedLabel): void
     {
         $token = 'TESTTOKEN' . substr(md5($status . uniqid()), 0, 8);
 
@@ -87,17 +89,10 @@ class StaticQrValidationStatusMappingPropertyTest extends TestCase
             ]);
         });
 
-        $response = $this->actingAs($this->user)
-            ->get('/validasi-cetak/' . $token);
+        $response = $this->get('/validasi-cetak/' . $token);
 
         $response->assertStatus(200);
         $response->assertSee($expectedLabel);
-
-        if ($shouldShowButton) {
-            $response->assertSee('Buka Dokumen');
-        } else {
-            $response->assertDontSee('Buka Dokumen');
-        }
     }
 
     /**
@@ -108,8 +103,7 @@ class StaticQrValidationStatusMappingPropertyTest extends TestCase
      */
     public function test_returns_404_for_nonexistent_qr_token(): void
     {
-        $response = $this->actingAs($this->user)
-            ->get('/validasi-cetak/NONEXISTENTTOKEN');
+        $response = $this->get('/validasi-cetak/NONEXISTENTTOKEN');
 
         $response->assertStatus(404);
     }
@@ -120,13 +114,15 @@ class StaticQrValidationStatusMappingPropertyTest extends TestCase
      *
      * Generate revisions with all possible statuses using Faker-generated data
      * to verify correct status label mapping across 100+ iterations.
+     *
+     * Note: The "Buka Dokumen" button is intentionally disabled and the route
+     * does not require authentication (public access for QR validation).
      */
     #[DataProvider('randomStatusMappingProvider')]
     public function test_random_revisions_map_to_correct_status_label(
         string $status,
         string $revisionNumber,
         string $expectedLabel,
-        bool $shouldShowButton,
         int $iteration
     ): void {
         $token = 'RND' . str_pad((string) $iteration, 5, '0', STR_PAD_LEFT) . substr(md5((string) $iteration), 0, 8);
@@ -142,42 +138,35 @@ class StaticQrValidationStatusMappingPropertyTest extends TestCase
             ]);
         });
 
-        $response = $this->actingAs($this->user)
-            ->get('/validasi-cetak/' . $token);
+        $response = $this->get('/validasi-cetak/' . $token);
 
         $response->assertStatus(200);
         $response->assertSee($expectedLabel);
-
-        if ($shouldShowButton) {
-            $response->assertSee('Buka Dokumen');
-        } else {
-            $response->assertDontSee('Buka Dokumen');
-        }
     }
 
     /**
      * Data provider with all possible status combinations.
-     * Each status maps to its expected label and button visibility.
+     * Each status maps to its expected display label.
      */
     public static function statusMappingProvider(): iterable
     {
-        // Published → Valid, button shown
-        yield 'Published status shows Valid' => ['Published', 'Valid', true];
+        // Published → Valid
+        yield 'Published status shows Valid' => ['Published', 'Valid'];
 
-        // Terbit → Valid, button shown
-        yield 'Terbit status shows Valid' => ['Terbit', 'Valid', true];
+        // Terbit → Valid
+        yield 'Terbit status shows Valid' => ['Terbit', 'Valid'];
 
-        // Obsolete → Obsolete, button hidden
-        yield 'Obsolete status shows Obsolete' => ['Obsolete', 'Obsolete', false];
+        // Obsolete → Obsolete
+        yield 'Obsolete status shows Obsolete' => ['Obsolete', 'Obsolete'];
 
-        // Draft → Belum Terbit, button hidden
-        yield 'Draft status shows Belum Terbit' => ['Draft', 'Belum Terbit', false];
+        // Draft → Belum Terbit
+        yield 'Draft status shows Belum Terbit' => ['Draft', 'Belum Terbit'];
 
-        // In_Review → Belum Terbit, button hidden
-        yield 'In_Review status shows Belum Terbit' => ['In_Review', 'Belum Terbit', false];
+        // In_Review → Belum Terbit
+        yield 'In_Review status shows Belum Terbit' => ['In_Review', 'Belum Terbit'];
 
-        // Approved → Belum Terbit, button hidden
-        yield 'Approved status shows Belum Terbit' => ['Approved', 'Belum Terbit', false];
+        // Approved → Belum Terbit
+        yield 'Approved status shows Belum Terbit' => ['Approved', 'Belum Terbit'];
     }
 
     /**
@@ -198,15 +187,6 @@ class StaticQrValidationStatusMappingPropertyTest extends TestCase
             'Approved' => 'Belum Terbit',
         ];
 
-        $statusToButton = [
-            'Published' => true,
-            'Terbit' => true,
-            'Obsolete' => false,
-            'Draft' => false,
-            'In_Review' => false,
-            'Approved' => false,
-        ];
-
         for ($i = 0; $i < 110; $i++) {
             $status = $faker->randomElement($statuses);
             $revisionNumber = $faker->numerify('0#');
@@ -215,7 +195,6 @@ class StaticQrValidationStatusMappingPropertyTest extends TestCase
                 $status,
                 $revisionNumber,
                 $statusToLabel[$status],
-                $statusToButton[$status],
                 $i,
             ];
         }

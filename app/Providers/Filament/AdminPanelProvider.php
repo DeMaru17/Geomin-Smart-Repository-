@@ -31,6 +31,8 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogo(asset('logo-antam.png'))
             ->brandLogoHeight('3rem')
             ->favicon(asset('favicon.ico'))
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
             ->sidebarCollapsibleOnDesktop()
             ->login()
             ->colors([
@@ -38,6 +40,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->navigationGroups([
                 'Manajemen Dokumen',
+                'Kaji Ulang',
                 'Data Master',
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')

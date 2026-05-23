@@ -6,10 +6,11 @@ use App\Services\ChangeRequestExportService;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
-use Filament\Infolists\Components\RepeatableEntry;
-use Filament\Infolists\Components\TextEntry;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
@@ -17,6 +18,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 
 class ChangeRequestsTable
 {
@@ -82,51 +84,70 @@ class ChangeRequestsTable
                     ->color('info')
                     ->slideOver()
                     ->visible(fn() => auth()->user()?->jabatan === 'manager')
-                    ->infolist([
-                        Section::make('Detail Pengajuan')
-                            ->schema([
-                                TextEntry::make('document.document_number')
-                                    ->label('Dokumen')
-                                    ->formatStateUsing(function ($record) {
-                                        $document = $record->document;
-
-                                        if (! $document) {
-                                            return '-';
-                                        }
-
-                                        return $document->document_number . ' - ' . $document->title;
-                                    }),
-                                TextEntry::make('proposal_date')
-                                    ->label('Tanggal Pengajuan')
-                                    ->date('d-m-Y'),
-                                TextEntry::make('proposer.name')
-                                    ->label('Pengusul'),
-                                TextEntry::make('reason')
-                                    ->label('Alasan Perubahan'),
-                                RepeatableEntry::make('proposed_changes')
-                                    ->label('Detail Perubahan')
-                                    ->schema([
-                                        TextEntry::make('halaman')
-                                            ->label('Halaman'),
-                                        TextEntry::make('item')
-                                            ->label('Item'),
-                                        TextEntry::make('detail_usulan')
-                                            ->label('Detail Usulan'),
-                                    ])
-                                    ->columns(3),
-                            ]),
-                    ])
                     ->form(function ($record) {
+                        $document = $record->document;
+                        $documentLabel = $document
+                            ? $document->document_number . ' - ' . $document->title
+                            : '-';
+
+                        // Detail pengajuan (read-only)
+                        $detailSchema = [
+                            Section::make('Detail Pengajuan')
+                                ->schema([
+                                    Placeholder::make('detail_dokumen')
+                                        ->label('Dokumen')
+                                        ->content($documentLabel),
+                                    Placeholder::make('detail_tanggal')
+                                        ->label('Tanggal Pengajuan')
+                                        ->content($record->proposal_date?->format('d-m-Y') ?? '-'),
+                                    Placeholder::make('detail_pengusul')
+                                        ->label('Pengusul')
+                                        ->content($record->proposer?->name ?? '-'),
+                                    Placeholder::make('detail_status')
+                                        ->label('Status')
+                                        ->content(new HtmlString(
+                                            '<span class="fi-badge fi-color-custom px-2 py-0.5 text-xs font-medium rounded-md ' . match ($record->approval_status) {
+                                                'Pending' => 'fi-color-gray bg-gray-50 text-gray-600 ring-gray-600/10 dark:bg-gray-400/10 dark:text-gray-400 dark:ring-gray-400/20',
+                                                'Segera dibuat revisi' => 'fi-color-success bg-success-50 text-success-600 ring-success-600/10 dark:bg-success-400/10 dark:text-success-400 dark:ring-success-400/20',
+                                                'Ditolak' => 'fi-color-danger bg-danger-50 text-danger-600 ring-danger-600/10 dark:bg-danger-400/10 dark:text-danger-400 dark:ring-danger-400/20',
+                                                'Di uji coba' => 'fi-color-warning bg-warning-50 text-warning-600 ring-warning-600/10 dark:bg-warning-400/10 dark:text-warning-400 dark:ring-warning-400/20',
+                                                'Dibahas di RTM' => 'fi-color-info bg-info-50 text-info-600 ring-info-600/10 dark:bg-info-400/10 dark:text-info-400 dark:ring-info-400/20',
+                                                default => 'fi-color-gray bg-gray-50 text-gray-600 ring-gray-600/10',
+                                            } . ' ring-1 ring-inset">' . e($record->approval_status) . '</span>'
+                                        )),
+                                    Placeholder::make('detail_alasan')
+                                        ->label('Alasan Perubahan')
+                                        ->content($record->reason ?? '-')
+                                        ->columnSpanFull(),
+                                    Repeater::make('proposed_changes')
+                                        ->label('Detail Perubahan')
+                                        ->schema([
+                                            TextInput::make('halaman')
+                                                ->label('Halaman')
+                                                ->disabled(),
+                                            TextInput::make('item')
+                                                ->label('Item')
+                                                ->disabled(),
+                                            Textarea::make('detail_usulan')
+                                                ->label('Detail Usulan')
+                                                ->disabled()
+                                                ->columnSpanFull(),
+                                        ])
+                                        ->columns(2)
+                                        ->columnSpanFull()
+                                        ->deletable(false)
+                                        ->addable(false)
+                                        ->reorderable(false),
+                                ])
+                                ->columns(2),
+                        ];
+
+                        // Form approval hanya untuk manager & status Pending
                         $isManager = auth()->user()?->jabatan === 'manager';
-
-                        if (! $isManager) {
-                            return [];
-                        }
-
                         $isPending = $record->approval_status === 'Pending';
 
-                        return [
-                            Section::make('Keputusan Approval')
+                        if ($isManager && $isPending) {
+                            $detailSchema[] = Section::make('Keputusan Approval')
                                 ->schema([
                                     Radio::make('approval_status')
                                         ->label('Status Keputusan')
@@ -137,25 +158,45 @@ class ChangeRequestsTable
                                             'Dibahas di RTM' => 'Dibahas di RTM',
                                         ])
                                         ->required()
-                                        ->live()
-                                        ->disabled(! $isPending),
+                                        ->live(),
                                     Textarea::make('approval_notes')
                                         ->label('Catatan Approval')
                                         ->maxLength(1000)
-                                        ->required(fn(Get $get) => $get('approval_status') !== null && $get('approval_status') !== 'Segera dibuat revisi')
-                                        ->disabled(! $isPending),
-                                ]),
-                        ];
-                    })
-                    ->fillForm(function ($record) {
-                        if ($record->approval_status === 'Pending') {
-                            return [];
+                                        ->required(fn(Get $get) => $get('approval_status') !== null && $get('approval_status') !== 'Segera dibuat revisi'),
+                                ]);
                         }
 
-                        return [
-                            'approval_status' => $record->approval_status,
-                            'approval_notes' => $record->approval_notes,
+                        // Tampilkan hasil approval jika sudah diproses
+                        if (! $isPending) {
+                            $detailSchema[] = Section::make('Hasil Approval')
+                                ->schema([
+                                    Placeholder::make('detail_approver')
+                                        ->label('Disetujui/Ditolak Oleh')
+                                        ->content($record->approver?->name ?? '-'),
+                                    Placeholder::make('detail_effective_date')
+                                        ->label('Tanggal Efektif')
+                                        ->content($record->effective_date?->format('d-m-Y') ?? '-'),
+                                    Placeholder::make('detail_approval_notes')
+                                        ->label('Catatan Approval')
+                                        ->content($record->approval_notes ?? '-')
+                                        ->columnSpanFull(),
+                                ])
+                                ->columns(2);
+                        }
+
+                        return $detailSchema;
+                    })
+                    ->fillForm(function ($record) {
+                        $data = [
+                            'proposed_changes' => $record->proposed_changes ?? [],
                         ];
+
+                        if ($record->approval_status !== 'Pending') {
+                            $data['approval_status'] = $record->approval_status;
+                            $data['approval_notes'] = $record->approval_notes;
+                        }
+
+                        return $data;
                     })
                     ->action(function ($record, array $data) {
                         // Server-side authorization check

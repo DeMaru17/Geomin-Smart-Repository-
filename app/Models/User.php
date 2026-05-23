@@ -34,6 +34,22 @@ class User extends Authenticatable
         'tanggal_mulai_bekerja',
     ];
 
+    public function notifications()
+    {
+        return $this->morphMany(\App\Models\SystemNotification::class, 'notifiable')
+            ->latest();
+    }
+
+    public function readNotifications()
+    {
+        return $this->notifications()->whereNotNull('read_at');
+    }
+
+    public function unreadNotifications()
+    {
+        return $this->notifications()->whereNull('read_at');
+    }
+
     /**
      * The attributes that should be hidden for serialization.
      *
