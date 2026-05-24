@@ -48,6 +48,7 @@ class DocumentsTable
                     ->label('Status')
                     ->badge()
                     ->color(fn(string $state): string => match ($state) {
+                        'Obsolete' => 'danger',
                         'Published', 'Terbit' => 'success',
                         'Draft' => 'gray',
                         'In_Review' => 'warning',

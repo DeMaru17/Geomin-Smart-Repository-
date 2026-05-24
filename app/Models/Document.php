@@ -18,6 +18,7 @@ class Document extends Model
         'publication_year',
         'remarks',
         'retention_period_months',
+        'status',
     ];
 
     // Relasi ke tabel Department (1 Dokumen punya 1 Departemen)

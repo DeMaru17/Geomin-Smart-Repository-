@@ -47,10 +47,33 @@ class RevisionsRelationManager extends RelationManager
                     ->dehydrated()
                     ->required(),
                 FileUpload::make('file_path')
-                    ->label('Dokumen Fisik (PDF)')
+                    ->label(function ($livewire) {
+                        $isForm = $livewire->getOwnerRecord()->category?->code === 'F';
+
+                        return $isForm ? 'Blanko Distribusi (Excel)' : 'Dokumen Fisik (PDF)';
+                    })
                     ->directory('geomin-documents')
-                    ->acceptedFileTypes(['application/pdf'])
-                    ->required(),
+                    ->acceptedFileTypes(function ($livewire) {
+                        $isForm = $livewire->getOwnerRecord()->category?->code === 'F';
+
+                        return $isForm
+                            ? ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel']
+                            : ['application/pdf'];
+                    })
+                    ->required(function ($livewire, $get) {
+                        $isForm = $livewire->getOwnerRecord()->category?->code === 'F';
+
+                        if ($isForm) {
+                            return empty($get('word_file_path'));
+                        }
+
+                        return true;
+                    })
+                    ->helperText(function ($livewire) {
+                        $isForm = $livewire->getOwnerRecord()->category?->code === 'F';
+
+                        return $isForm ? 'Opsional jika Dokumen Master sudah diunggah.' : null;
+                    }),
                 Select::make('status')
                     ->label('Status Dokumen')
                     ->options([
@@ -63,10 +86,35 @@ class RevisionsRelationManager extends RelationManager
                     ->default('Draft')
                     ->required(),
                 FileUpload::make('word_file_path')
-                    ->label('Dokumen Master (Word)')
+                    ->label(function ($livewire) {
+                        $isForm = $livewire->getOwnerRecord()->category?->code === 'F';
+
+                        return $isForm ? 'Dokumen Master (Word/Excel)' : 'Dokumen Master (Word)';
+                    })
                     ->directory('geomin-documents/word')
-                    ->acceptedFileTypes(['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])
-                    ->helperText('Hanya dapat diunduh oleh Admin/Manajemen.'),
+                    ->acceptedFileTypes(function ($livewire) {
+                        $isForm = $livewire->getOwnerRecord()->category?->code === 'F';
+
+                        return $isForm
+                            ? ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel']
+                            : ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+                    })
+                    ->required(function ($livewire, $get) {
+                        $isForm = $livewire->getOwnerRecord()->category?->code === 'F';
+
+                        if ($isForm) {
+                            return empty($get('file_path'));
+                        }
+
+                        return false;
+                    })
+                    ->helperText(function ($livewire) {
+                        $isForm = $livewire->getOwnerRecord()->category?->code === 'F';
+
+                        return $isForm
+                            ? 'Unggah minimal salah satu: Blanko Distribusi atau Dokumen Master.'
+                            : 'Hanya dapat diunduh oleh Admin/Manajemen.';
+                    }),
                 DatePicker::make('revision_date')
                     ->label('Tanggal Revisi Aktual')
                     ->default(now())
@@ -139,11 +187,13 @@ class RevisionsRelationManager extends RelationManager
                     ->label('Pratinjau')
                     ->icon('heroicon-o-eye')
                     ->color('primary')
+                    ->visible(fn($record) => strtolower(pathinfo($record->file_path ?? '', PATHINFO_EXTENSION)) === 'pdf')
                     ->url(fn($record) => route('secure.viewer', ['id' => $record->id])),
                 Action::make('download_pdf')
                     ->label('Unduh PDF')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('danger')
+                    ->visible(fn($record) => $record->document?->category?->code !== 'F')
                     ->action(function ($record) {
                         $fileName = "{$record->document->document_number} - {$record->document->title} (Rev {$record->revision_number}).pdf";
 
@@ -153,12 +203,35 @@ class RevisionsRelationManager extends RelationManager
                     ->label('Unduh Word')
                     ->icon('heroicon-o-document-text')
                     ->color('info')
-                    ->visible(fn($record) => in_array(auth()->user()?->role, ['admin', 'manajemen']) && $record->word_file_path)
+                    ->visible(fn($record) => in_array(auth()->user()?->role, ['admin', 'manajemen']) && $record->word_file_path && $record->document?->category?->code !== 'F')
                     ->action(function ($record) {
                         $extension = pathinfo($record->word_file_path, PATHINFO_EXTENSION);
                         $fileName = "{$record->document->document_number} - {$record->document->title} (Rev {$record->revision_number}).{$extension}";
 
                         return response()->download(Storage::path($record->word_file_path), $fileName);
+                    }),
+                Action::make('download_blanko')
+                    ->label('Unduh Blanko')
+                    ->icon('heroicon-o-table-cells')
+                    ->color('success')
+                    ->visible(fn($record) => $record->document?->category?->code === 'F' && $record->status === 'Published')
+                    ->action(function ($record) {
+                        $targetPath = null;
+
+                        if (! empty($record->word_file_path) && Storage::exists($record->word_file_path)) {
+                            $targetPath = $record->word_file_path;
+                        } elseif (! empty($record->file_path) && Storage::exists($record->file_path)) {
+                            $targetPath = $record->file_path;
+                        }
+
+                        if (! $targetPath) {
+                            return;
+                        }
+
+                        $extension = pathinfo($targetPath, PATHINFO_EXTENSION);
+                        $fileName = "{$record->document->document_number} - {$record->document->title} (Rev {$record->revision_number}).{$extension}";
+
+                        return response()->download(Storage::path($targetPath), $fileName);
                     }),
                 EditAction::make(),
                 DeleteAction::make(),

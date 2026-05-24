@@ -62,6 +62,36 @@ class PdfStamperService
     }
 
     /**
+     * Generate an obsolete copy PDF:
+     * - Stamp "OBSOLETE" on every page (center)
+     */
+    public function stampObsolete(DocumentRevision $revision): string
+    {
+        $sourcePath = $this->resolveSourcePath($revision);
+        $stampPath = $this->getStampPath('obsolete');
+
+        try {
+            $pdf = new Fpdi();
+            $pageCount = $pdf->setSourceFile($sourcePath);
+        } catch (\Exception $e) {
+            throw new RuntimeException('Failed to process PDF: ' . $e->getMessage());
+        }
+
+        for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
+            $templateId = $pdf->importPage($pageNo);
+            $size = $pdf->getImportedPageSize($templateId);
+
+            $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
+            $pdf->useImportedPage($templateId);
+
+            // Overlay obsolete stamp on every page (center)
+            $this->overlayStampBottomCenter($pdf, $stampPath, $size['width'], $size['height']);
+        }
+
+        return $pdf->Output('S');
+    }
+
+    /**
      * Generate an uncontrolled copy PDF:
      * - Stamp "Uncontrolled" on page 2 only (bottom center, small)
      */

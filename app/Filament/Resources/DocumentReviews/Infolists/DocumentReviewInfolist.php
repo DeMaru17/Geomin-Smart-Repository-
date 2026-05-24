@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\DocumentReviews\Infolists;
 
+use App\Filament\Resources\DocumentDestructions\DocumentDestructionResource;
 use App\Models\ChangeRequest;
 use App\Models\Document;
 use App\Services\DocumentReviewService;
@@ -264,13 +265,10 @@ class DocumentReviewInfolist
             ->icon('heroicon-m-trash')
             ->color('danger')
             ->visible(fn($record) => $record->evaluation_status === 'Perlu dimusnahkan')
-            ->action(function () {
-                Notification::make()
-                    ->title('Fitur Belum Tersedia')
-                    ->body('Fitur Berita Acara Pemusnahan Dokumen (BAPD) akan tersedia pada rilis mendatang.')
-                    ->info()
-                    ->send();
-            });
+            ->url(fn($record) => DocumentDestructionResource::getUrl('create', [
+                'document_id' => $record->document_id,
+                'reason' => $record->remarks,
+            ]));
     }
 
     private static function getEvaluationStatusColor(?string $status): ?string

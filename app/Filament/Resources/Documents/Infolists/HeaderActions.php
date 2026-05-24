@@ -10,28 +10,32 @@ use Filament\Actions\Action as InfolistAction;
 use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Storage;
 
 class HeaderActions
 {
     /**
      * Semua tombol aksi yang ditampilkan di header infolist (bagian kanan).
+     * Untuk kategori Form ('F'): hanya Edit + Unduh Blanko.
+     * Untuk kategori lain: full set (Buka, Cetak/Unduh, Lainnya).
      */
     public static function make(): array
     {
         return [
-            // Urutan terbalik karena Alignment::End merender dari kanan ke kiri
-            // Kanan: utilitas (admin tools)
+            // Kanan: utilitas (admin tools) — hidden untuk Form
             ActionGroup::make([
-                self::editAction(),
+                self::editAction()
+                    ->visible(fn() => in_array(auth()->user()?->role, ['admin', 'manajemen'])),
                 self::bandingkanVersiAction(),
                 self::cetakQrCodeAction(),
             ])
                 ->label('Lainnya')
                 ->icon('heroicon-m-ellipsis-vertical')
                 ->color('gray')
-                ->button(),
+                ->button()
+                ->visible(fn($livewire) => $livewire->getRecord()->category?->code !== 'F'),
 
-            // Tengah: cetak & unduh (menghasilkan file PDF)
+            // Tengah: cetak & unduh PDF — hidden untuk Form
             ActionGroup::make([
                 self::cetakTerkendaliAction(),
                 self::unduhTidakTerkendaliAction(),
@@ -39,20 +43,27 @@ class HeaderActions
                 ->label('Cetak / Unduh')
                 ->icon('heroicon-m-printer')
                 ->color('success')
-                ->button(),
+                ->button()
+                ->visible(fn($livewire) => $livewire->getRecord()->category?->code !== 'F'),
 
-            // Kiri: buka dokumen (aksi utama)
+            // Kiri: buka dokumen — hidden untuk Form
             self::bukaDokumenAction(),
+
+            // Khusus Form: Edit
+            self::editAction('edit_form')
+                ->visible(fn($livewire) => in_array(auth()->user()?->role, ['admin', 'manajemen']) && $livewire->getRecord()->category?->code === 'F'),
+
+            // Khusus Form: Unduh Blanko (revisi Published terbaru)
+            self::unduhBlankoHeaderAction(),
         ];
     }
 
-    private static function editAction(): InfolistAction
+    private static function editAction(string $name = 'edit'): InfolistAction
     {
-        return InfolistAction::make('edit')
+        return InfolistAction::make($name)
             ->label('Edit')
             ->icon('heroicon-m-pencil')
             ->color('primary')
-            ->visible(fn() => in_array(auth()->user()?->role, ['admin', 'manajemen']))
             ->url(fn($record) => EditDocument::getUrl(['record' => $record]));
     }
 
@@ -123,6 +134,7 @@ class HeaderActions
             ->label('Buka Dokumen')
             ->icon('heroicon-m-eye')
             ->color('info')
+            ->visible(fn($record) => $record?->category?->code !== 'F')
             ->action(function ($record) {
                 $revision = $record->revisions()
                     ->whereIn('status', ['Published', 'Approved'])
@@ -260,6 +272,66 @@ class HeaderActions
                 }, $filename, [
                     'Content-Type' => 'application/pdf',
                 ]);
+            });
+    }
+
+    private static function unduhBlankoHeaderAction(): InfolistAction
+    {
+        return InfolistAction::make('unduh_blanko')
+            ->label('Unduh Blanko')
+            ->icon('heroicon-m-table-cells')
+            ->color('success')
+            ->button()
+            ->visible(fn($record) => $record?->category?->code === 'F'
+                && $record?->revisions()->where('status', 'Published')->exists())
+            ->action(function ($record) {
+                $revision = $record->revisions()
+                    ->where('status', 'Published')
+                    ->latest()
+                    ->first();
+
+                if (! $revision) {
+                    Notification::make()
+                        ->title('Gagal')
+                        ->body('Tidak ada revisi Published untuk dokumen ini.')
+                        ->danger()
+                        ->send();
+
+                    return;
+                }
+
+                $targetPath = null;
+
+                if (! empty($revision->word_file_path) && Storage::exists($revision->word_file_path)) {
+                    $targetPath = $revision->word_file_path;
+                } elseif (! empty($revision->file_path) && Storage::exists($revision->file_path)) {
+                    $targetPath = $revision->file_path;
+                }
+
+                if (! $targetPath) {
+                    Notification::make()
+                        ->title('Gagal')
+                        ->body('Berkas master form tidak ditemukan di server.')
+                        ->danger()
+                        ->send();
+
+                    return;
+                }
+
+                DocumentDistributionLog::create([
+                    'document_revision_id' => $revision->id,
+                    'user_id' => auth()->id(),
+                    'recipient_name' => auth()->user()->name,
+                    'purpose' => 'Mengunduh blanko form untuk isian',
+                    'action' => 'Unduh Blanko (Excel)',
+                    'is_qr_access' => false,
+                    'accessed_at' => now(),
+                ]);
+
+                $extension = pathinfo($targetPath, PATHINFO_EXTENSION);
+                $fileName = "{$record->document_number} - {$record->title} (Rev {$revision->revision_number}).{$extension}";
+
+                return response()->download(Storage::path($targetPath), $fileName);
             });
     }
 }
