@@ -41,6 +41,7 @@ class AdminPanelProvider extends PanelProvider
             ->navigationGroups([
                 'Manajemen Dokumen',
                 'Kaji Ulang',
+                'Rekaman Mutu',
                 'Data Master',
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')

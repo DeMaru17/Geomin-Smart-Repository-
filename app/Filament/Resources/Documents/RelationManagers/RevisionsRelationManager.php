@@ -197,6 +197,17 @@ class RevisionsRelationManager extends RelationManager
                     ->action(function ($record) {
                         $fileName = "{$record->document->document_number} - {$record->document->title} (Rev {$record->revision_number}).pdf";
 
+                        // Obsolete revisions get the OBSOLETE stamp
+                        if ($record->status === 'Obsolete') {
+                            $pdfContent = app(\App\Services\PdfStamperService::class)->stampObsolete($record);
+
+                            return response()->streamDownload(function () use ($pdfContent) {
+                                echo $pdfContent;
+                            }, $fileName, [
+                                'Content-Type' => 'application/pdf',
+                            ]);
+                        }
+
                         return response()->download(Storage::path($record->file_path), $fileName);
                     }),
                 Action::make('download_word')

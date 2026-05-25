@@ -68,6 +68,31 @@ class PdfStamperService
     public function stampObsolete(DocumentRevision $revision): string
     {
         $sourcePath = $this->resolveSourcePath($revision);
+
+        return $this->applyObsoleteStamp($sourcePath);
+    }
+
+    /**
+     * Generate an obsolete copy PDF from a raw file path:
+     * - Stamp "OBSOLETE" on every page (center)
+     * - Accepts a storage-relative file path instead of a DocumentRevision
+     */
+    public function stampObsoleteFromPath(string $filePath): string
+    {
+        $absolutePath = storage_path('app/private/' . $filePath);
+
+        if (!file_exists($absolutePath)) {
+            throw new RuntimeException('Source PDF file not found');
+        }
+
+        return $this->applyObsoleteStamp($absolutePath);
+    }
+
+    /**
+     * Apply the obsolete stamp to every page of a PDF at the given absolute path.
+     */
+    private function applyObsoleteStamp(string $sourcePath): string
+    {
         $stampPath = $this->getStampPath('obsolete');
 
         try {

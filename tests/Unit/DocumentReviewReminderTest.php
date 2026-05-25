@@ -31,7 +31,7 @@ class DocumentReviewReminderTest extends TestCase
         $this->assertEquals(['database'], $channels);
     }
 
-    public function test_via_returns_mail_for_email_type(): void
+    public function test_via_returns_database_and_mail_for_email_type(): void
     {
         $document = $this->makeDocument();
         $dueDate = Carbon::parse('2025-08-01');
@@ -40,10 +40,10 @@ class DocumentReviewReminderTest extends TestCase
 
         $channels = $notification->via((object) []);
 
-        $this->assertEquals(['mail'], $channels);
+        $this->assertEquals(['database', 'mail'], $channels);
     }
 
-    public function test_via_returns_mail_for_overdue_type(): void
+    public function test_via_returns_database_and_mail_for_overdue_type(): void
     {
         $document = $this->makeDocument();
         $dueDate = Carbon::parse('2025-05-01');
@@ -52,7 +52,7 @@ class DocumentReviewReminderTest extends TestCase
 
         $channels = $notification->via((object) []);
 
-        $this->assertEquals(['mail'], $channels);
+        $this->assertEquals(['database', 'mail'], $channels);
     }
 
     public function test_to_database_returns_correct_payload(): void
