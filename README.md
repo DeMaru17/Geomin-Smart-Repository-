@@ -1,58 +1,100 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Geomin Smart Repository (GSR)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistem manajemen dokumen terkendali berbasis web untuk PT Antam, dibangun sesuai standar ISO 17025. GSR mengelola siklus hidup dokumen secara lengkap — mulai dari pembuatan, revisi, distribusi, hingga validasi cetak melalui QR code.
 
-## About Laravel
+## Fitur Utama
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Pengendalian Dokumen** — Dokumen internal & eksternal dengan riwayat revisi dan alur persetujuan
+- **Kepatuhan ISO 17025** — Dokumen terhubung dengan klausul ISO; distribusi salinan terkendali tercatat
+- **Validasi QR Code** — Dua strategi: dinamis (selalu mengarah ke revisi terbaru) dan statis (validasi salinan cetak spesifik via token unik)
+- **Log Distribusi** — Mencatat siapa yang mengakses/mencetak revisi tertentu, kapan, dan untuk keperluan apa
+- **Stempel PDF** — Menghasilkan salinan terkendali/tidak terkendali dengan watermark dan halaman validasi
+- **Perbandingan Versi** — Visual diff antar revisi dokumen
+- **Permintaan Perubahan** — Workflow pengajuan perubahan dokumen
+- **Pemusnahan Dokumen** — Pencatatan dan pengelolaan dokumen yang telah habis masa retensi
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Tech Stack
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+| Layer       | Teknologi                          |
+| ----------- | ---------------------------------- |
+| Backend     | PHP 8.3+, Laravel 13               |
+| Admin Panel | Filament 5.6                       |
+| Database    | MySQL (dual: `gsr` + `mysql_hris`) |
+| Frontend    | Tailwind CSS 4, Vite 8             |
+| PDF         | FPDF/FPDI, Spatie PDF-to-Text      |
+| QR Code     | SimpleSoftwareIO Simple QRCode     |
+| Export      | pxlrbt/filament-excel              |
 
-## Learning Laravel
+## Persyaratan Sistem
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- PHP 8.3+
+- MySQL 8.0+
+- Node.js 20+
+- Composer 2
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Instalasi
 
 ```bash
-composer require laravel/boost --dev
+# Clone repository
+git clone <repository-url> gsr
+cd gsr
 
-php artisan boost:install
+# Install dependencies
+composer install
+npm install
+
+# Konfigurasi environment
+cp .env.example .env
+php artisan key:generate
+
+# Migrasi & seed database
+php artisan migrate --seed
+
+# Build assets
+npm run build
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## Development
 
-## Contributing
+```bash
+# Jalankan server, queue, log viewer, dan Vite sekaligus
+composer dev
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+# Atau jalankan terpisah:
+php artisan serve
+php artisan queue:listen --tries=1 --timeout=0
+npm run dev
+```
 
-## Code of Conduct
+## Perintah Berguna
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+# Jalankan test
+composer test
 
-## Security Vulnerabilities
+# Format kode (PSR-12)
+./vendor/bin/pint
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+# Fresh migration dengan seed
+php artisan migrate:fresh --seed
 
-## License
+# Build assets untuk production
+npm run build
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Struktur Database
+
+- **`gsr`** — Database utama aplikasi (dokumen, revisi, kategori, distribusi, dll.)
+- **`mysql_hris`** — Database HRIS eksternal (tabel users)
+
+## Peran Pengguna
+
+| Role        | Akses                                      |
+| ----------- | ------------------------------------------ |
+| `admin`     | Akses penuh termasuk edit dokumen          |
+| `manajemen` | Akses penuh termasuk edit dokumen          |
+| User biasa  | Lihat dokumen, generate salinan terkendali |
+
+## Lisensi
+
+Proprietary — PT Antam. Hak cipta dilindungi.

@@ -13,4 +13,10 @@ class DocumentCategory extends Model
         'code',
         'name',
     ];
+
+    // Relasi ke tabel Document (1 Kategori punya Banyak Dokumen)
+    public function documents()
+    {
+        return $this->hasMany(Document::class, 'category_id');
+    }
 }

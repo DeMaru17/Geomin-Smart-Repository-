@@ -13,4 +13,10 @@ class Department extends Model
         'code',
         'name',
     ];
+
+    // Relasi ke tabel Document (1 Departemen punya Banyak Dokumen)
+    public function documents()
+    {
+        return $this->hasMany(Document::class, 'department_id');
+    }
 }

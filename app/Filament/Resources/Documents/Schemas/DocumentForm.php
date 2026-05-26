@@ -40,7 +40,9 @@ class DocumentForm
                 Select::make('isoClauses')
                     ->label('Klausul ISO Terkait')
                     ->relationship('isoClauses', 'clause_number')
+                    ->getOptionLabelFromRecordUsing(fn($record) => "{$record->clause_number} — {$record->description}")
                     ->multiple()
+                    ->searchable()
                     ->preload(),
                 TextInput::make('retention_period_months')
                     ->label('Masa Retensi (Bulan)')
