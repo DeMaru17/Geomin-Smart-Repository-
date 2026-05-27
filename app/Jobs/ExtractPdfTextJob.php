@@ -37,8 +37,8 @@ class ExtractPdfTextJob implements ShouldQueue
         $absolutePath = Storage::path($revision->file_path);
 
         try {
-            // Path ke pdftotext.exe dari instalasi Poppler
-            $text = (new Pdf('C:\\poppler-26.02.0\\Library\\bin\\pdftotext.exe'))
+            // Path ke pdftotext (fleksibel via env: Windows lokal / Linux production)
+            $text = (new Pdf(env('PDFTOTEXT_PATH', '/usr/bin/pdftotext')))
                 ->setPdf($absolutePath)
                 ->text();
 
