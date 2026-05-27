@@ -80,7 +80,7 @@
 
         {{-- Footer --}}
         <p class="text-xs text-gray-400 text-center mt-6">
-            Halaman ini dihasilkan oleh sistem Geomin Smart Repository untuk memverifikasi keaslian salinan cetak
+            Halaman ini dihasilkan oleh sistem GeoLab Smart Repository untuk memverifikasi keaslian salinan cetak
             dokumen.
         </p>
     </div>

@@ -256,7 +256,7 @@ class PdfStamperService
         // Footer note
         $pdf->SetFont('Helvetica', 'I', 8);
         $pdf->SetXY(0, 250);
-        $pdf->Cell(210, 5, 'Halaman ini digenerate secara otomatis oleh sistem GSR (Geomin Smart Repository).', 0, 1, 'C');
+        $pdf->Cell(210, 5, 'Halaman ini digenerate secara otomatis oleh sistem GLSR (GeoLab Smart Repository).', 0, 1, 'C');
         $pdf->Cell(210, 5, 'Dokumen tanpa halaman validasi ini dianggap tidak sah.', 0, 1, 'C');
     }
 

@@ -15,7 +15,7 @@
             <div class="mt-2 grid grid-cols-2 gap-x-4 text-xs">
                 <div>
                     <span class="text-gray-500 dark:text-gray-400">Email:</span>
-                    <span class="ml-1 font-mono text-gray-800 dark:text-gray-200">admin@gsr.test</span>
+                    <span class="ml-1 font-mono text-gray-800 dark:text-gray-200">admin@glsr.test</span>
                 </div>
                 <div>
                     <span class="text-gray-500 dark:text-gray-400">Password:</span>
@@ -35,7 +35,7 @@
             <div class="mt-2 grid grid-cols-2 gap-x-4 text-xs">
                 <div>
                     <span class="text-gray-500 dark:text-gray-400">Email:</span>
-                    <span class="ml-1 font-mono text-gray-800 dark:text-gray-200">manajemen@gsr.test</span>
+                    <span class="ml-1 font-mono text-gray-800 dark:text-gray-200">manajemen@glsr.test</span>
                 </div>
                 <div>
                     <span class="text-gray-500 dark:text-gray-400">Password:</span>
@@ -55,7 +55,7 @@
             <div class="mt-2 grid grid-cols-2 gap-x-4 text-xs">
                 <div>
                     <span class="text-gray-500 dark:text-gray-400">Email:</span>
-                    <span class="ml-1 font-mono text-gray-800 dark:text-gray-200">user@gsr.test</span>
+                    <span class="ml-1 font-mono text-gray-800 dark:text-gray-200">user@glsr.test</span>
                 </div>
                 <div>
                     <span class="text-gray-500 dark:text-gray-400">Password:</span>

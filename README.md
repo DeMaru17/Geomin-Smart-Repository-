@@ -1,6 +1,6 @@
-# Geomin Smart Repository (GSR)
+# GeoLab Smart Repository (GLSR)
 
-Sistem manajemen dokumen terkendali berbasis web untuk PT Antam, dibangun sesuai standar ISO 17025. GSR mengelola siklus hidup dokumen secara lengkap — mulai dari pembuatan, revisi, distribusi, hingga validasi cetak melalui QR code.
+Sistem manajemen dokumen terkendali berbasis web untuk PT Antam, dibangun sesuai standar ISO 17025. GLSR mengelola siklus hidup dokumen secara lengkap — mulai dari pembuatan, revisi, distribusi, hingga validasi cetak melalui QR code.
 
 ## Fitur Utama
 

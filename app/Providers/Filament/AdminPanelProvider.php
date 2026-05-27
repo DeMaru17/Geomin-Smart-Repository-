@@ -27,7 +27,7 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('')
-            ->brandName('Geomin Smart Repository')
+            ->brandName('GeoLab Smart Repository')
             ->brandLogo(asset('logo-antam.png'))
             ->brandLogoHeight('3rem')
             ->favicon(asset('favicon.ico'))
