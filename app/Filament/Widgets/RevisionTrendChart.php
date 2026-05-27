@@ -13,6 +13,8 @@ class RevisionTrendChart extends ChartWidget
 
     protected int | string | array $columnSpan = 'full';
 
+    protected ?string $maxHeight = '250px';
+
     protected function getType(): string
     {
         return 'line';

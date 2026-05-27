@@ -10,6 +10,11 @@ class ChangeRequestDashboardStatsWidget extends StatsOverviewWidget
 {
     protected static ?int $sort = 3;
 
+    protected function getColumns(): int
+    {
+        return 3;
+    }
+
     protected function getStats(): array
     {
         $service = app(DashboardStatsService::class);

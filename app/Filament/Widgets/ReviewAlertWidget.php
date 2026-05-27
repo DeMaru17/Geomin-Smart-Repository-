@@ -12,6 +12,11 @@ class ReviewAlertWidget extends StatsOverviewWidget
 {
     protected static ?int $sort = 2;
 
+    protected function getColumns(): int
+    {
+        return 3;
+    }
+
     public static function canView(): bool
     {
         return in_array(auth()->user()?->role, ['admin', 'manajemen']);

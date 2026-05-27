@@ -10,6 +10,11 @@ class QualityRecordAlertWidget extends StatsOverviewWidget
 {
     protected static ?int $sort = 4;
 
+    protected function getColumns(): int
+    {
+        return 2;
+    }
+
     public static function canView(): bool
     {
         return in_array(auth()->user()?->role, ['admin', 'manajemen']);

@@ -10,12 +10,13 @@ class DocumentByDepartmentChart extends ChartWidget
     protected static ?int $sort = 6;
 
     protected int | string | array $columnSpan = [
+        'default' => 'full',
         'md' => 1,
-        'sm' => 2,
-        'default' => 2,
     ];
 
     protected ?string $heading = 'Dokumen per Departemen';
+
+    protected ?string $maxHeight = '300px';
 
     protected function getType(): string
     {
