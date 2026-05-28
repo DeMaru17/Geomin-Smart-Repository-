@@ -77,7 +77,7 @@ class DocumentsTable
                 SelectFilter::make('isoClauses')
                     ->label('Klausul ISO')
                     ->multiple()
-                    ->relationship('isoClauses', 'clause_number')
+                    ->relationship('isoClauses', 'clause_number', fn($query, $search) => $query->where('clause_number', 'like', "%{$search}%")->orWhere('description', 'like', "%{$search}%"))
                     ->getOptionLabelFromRecordUsing(fn($record) => $record->clause_number . ' - ' . $record->description)
                     ->searchable()
                     ->preload(),
