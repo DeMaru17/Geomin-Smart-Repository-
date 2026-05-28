@@ -77,8 +77,17 @@ class DocumentsTable
                 SelectFilter::make('isoClauses')
                     ->label('Klausul ISO')
                     ->multiple()
-                    ->relationship('isoClauses', 'clause_number', fn($query, $search) => $query->where('clause_number', 'like', "%{$search}%")->orWhere('description', 'like', "%{$search}%"))
-                    ->getOptionLabelFromRecordUsing(fn($record) => $record->clause_number . ' - ' . $record->description)
+                    ->options(
+                        \App\Models\IsoClause::query()
+                            ->orderBy('clause_number')
+                            ->get()
+                            ->mapWithKeys(fn($clause) => [$clause->id => $clause->clause_number . ' - ' . $clause->description])
+                            ->toArray()
+                    )
+                    ->query(fn($query, array $data) => $query->when(
+                        $data['values'] ?? null,
+                        fn($query, $values) => $query->whereHas('isoClauses', fn($q) => $q->whereIn('iso_clauses.id', $values))
+                    ))
                     ->searchable()
                     ->preload(),
             ], layout: FiltersLayout::AboveContent)
