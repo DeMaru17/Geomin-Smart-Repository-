@@ -80,7 +80,7 @@ class DocumentsTable
                     ->relationship('isoClauses', 'clause_number')
                     ->getOptionLabelFromRecordUsing(fn($record) => $record->clause_number . ' - ' . $record->description)
                     ->searchable()
-                    ->preload(false),
+                    ->preload(),
             ], layout: FiltersLayout::AboveContent)
             ->filtersFormColumns(4)
             ->actions([
