@@ -4,9 +4,11 @@ namespace App\Filament\Resources\Documents\Pages;
 
 use App\Filament\Resources\Documents\DocumentResource;
 use App\Filament\Resources\Documents\Exports\ExternalDocumentExport;
-use App\Filament\Resources\Documents\Exports\InternalDocumentExport;
+use App\Services\InternalDocumentExportService;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
@@ -21,13 +23,35 @@ class ListDocuments extends ListRecords
         return [
             CreateAction::make()->label('Tambah Dokumen'),
             ActionGroup::make([
-                ExportAction::make()
+                Action::make('export_form_202')
                     ->label('273.106.202 (Internal)')
                     ->color('success')
                     ->icon('heroicon-m-arrow-down-tray')
-                    ->exports([
-                        InternalDocumentExport::make(),
-                    ]),
+                    ->action(function (InternalDocumentExportService $service) {
+                        $response = $service->export();
+
+                        if ($response === false) {
+                            $templatePath = $service->getTemplatePath();
+
+                            if (! file_exists($templatePath)) {
+                                Notification::make()
+                                    ->title('File template tidak ditemukan')
+                                    ->body('File template Excel Form 273.106.202 tidak tersedia di storage.')
+                                    ->danger()
+                                    ->send();
+                            } else {
+                                Notification::make()
+                                    ->title('Tidak ada data')
+                                    ->body('Tidak ada dokumen internal aktif yang memenuhi syarat untuk diekspor.')
+                                    ->warning()
+                                    ->send();
+                            }
+
+                            return null;
+                        }
+
+                        return $response;
+                    }),
                 ExportAction::make('export_form_203')
                     ->label('273.106.203 (Eksternal)')
                     ->color('warning')
