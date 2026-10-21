@@ -24,18 +24,23 @@ class QualityRecord extends Model
         'expiration_date',
         'status',
         'uploader_id',
+        'quality_record_destruction_group_id',
+        'destruction_date',
+        'destruction_method',
+        'destruction_operator_id',
     ];
 
     protected $casts = [
         'record_date' => 'date',
         'expiration_date' => 'date',
+        'destruction_date' => 'date',
     ];
 
     protected static function booted(): void
     {
         static::creating(function (QualityRecord $record) {
-            // Auto-set uploader_id from authenticated user
-            $record->uploader_id = auth()->id();
+            // Auto-set uploader_id from authenticated user if not explicitly provided
+            $record->uploader_id = $record->uploader_id ?? auth()->id();
 
             // Calculate expiration_date
             $record->expiration_date = $record->calculateExpirationDate();
@@ -59,6 +64,44 @@ class QualityRecord extends Model
     public function uploader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'uploader_id');
+    }
+
+    // Relasi ke grup pemusnahan rekaman mutu (BAPR)
+    public function destructionGroup(): BelongsTo
+    {
+        return $this->belongsTo(QualityRecordDestructionGroup::class, 'quality_record_destruction_group_id');
+    }
+
+    // Relasi ke User operator yang mengeksekusi pemusnahan
+    public function destructionOperator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'destruction_operator_id');
+    }
+
+    /**
+     * Daftarkan rekaman ke grup pemusnahan BAPR pada tanggal pemusnahan.
+     */
+    public function assignToDestructionGroup(
+        ?string $method = null,
+        ?int $operatorId = null,
+        ?int $acknowledgedById = null
+    ): QualityRecordDestructionGroup {
+        $destructionDate = $this->destruction_date ?? now();
+        $group = QualityRecordDestructionGroup::findOrCreateOpenGroupForDate(
+            $destructionDate,
+            $method ?? $this->destruction_method,
+            $operatorId ?? $this->destruction_operator_id ?? auth()->id(),
+            $acknowledgedById
+        );
+
+        $this->update([
+            'quality_record_destruction_group_id' => $group->id,
+            'destruction_date' => $group->destruction_date,
+            'destruction_method' => $method ?? $group->method,
+            'destruction_operator_id' => $operatorId ?? $this->destruction_operator_id ?? auth()->id(),
+        ]);
+
+        return $group;
     }
 
     /**

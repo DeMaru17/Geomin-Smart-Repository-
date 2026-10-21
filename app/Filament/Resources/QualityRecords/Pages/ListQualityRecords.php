@@ -18,6 +18,17 @@ class ListQualityRecords extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            \Filament\Actions\Action::make('cetak_bapr_tanggal')
+                ->label('Cetak BAPR per Tanggal')
+                ->icon('heroicon-m-arrow-down-tray')
+                ->color('success')
+                ->visible(fn () => in_array(auth()->user()?->role, ['admin', 'manajemen']))
+                ->modalHeading('Cetak BAPR')
+                ->modalDescription('Pilih tanggal yang ditandai pada kalender atau cari BAPR melalui daftar.')
+                ->modalWidth('5xl')
+                ->modalContent(view('filament.resources.quality-records.bapr-modal'))
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Tutup'),
             ExportAction::make()
                 ->label('Export DIRM')
                 ->exports([

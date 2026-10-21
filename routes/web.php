@@ -103,3 +103,11 @@ Route::get('/quality-record-viewer/{id}', function ($id) {
 
     return view('quality-record-viewer', ['record' => $record]);
 })->name('quality-record.viewer')->middleware(['auth']);
+
+Route::get('/bapd/download/{id}', [\App\Http\Controllers\BapdDownloadController::class, 'download'])
+    ->name('bapd.download')
+    ->middleware(['auth']);
+
+Route::get('/bapr/download/{id}', [\App\Http\Controllers\BaprDownloadController::class, 'download'])
+    ->name('bapr.download')
+    ->middleware(['auth']);

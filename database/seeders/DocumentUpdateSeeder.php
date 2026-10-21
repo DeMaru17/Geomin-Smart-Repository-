@@ -96,7 +96,7 @@ class DocumentUpdateSeeder extends Seeder
                         'department_id' => $departmentId,
                         'is_external' => false,
                         'publication_year' => null, // Dokumen internal tidak menggunakan publication_year
-                        'retention_period_months' => 60,
+                        'retention_period_months' => 36,
                         'status' => $documentStatus,
                     ],
                 );

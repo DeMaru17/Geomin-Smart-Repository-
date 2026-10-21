@@ -81,15 +81,42 @@ class QualityRecordsTable
                             && in_array($user->role, ['admin', 'manajemen']);
                     })
                     ->authorize(fn(QualityRecord $record): bool => auth()->user()->can('destroy', $record))
-                    ->requiresConfirmation()
+                    ->form([
+                        \Filament\Forms\Components\Select::make('method')
+                            ->label('Cara / Metode Pemusnahan')
+                            ->options([
+                                'Dihapus dari server & backup' => 'Dihapus dari server & backup',
+                                'Dicacah' => 'Dicacah',
+                                'Diformat' => 'Diformat',
+                                'Dibakar' => 'Dibakar',
+                            ])
+                            ->default('Dihapus dari server & backup')
+                            ->required(),
+                    ])
                     ->modalHeading('Musnahkan Rekaman Mutu')
-                    ->modalDescription('Apakah Anda yakin ingin memusnahkan rekaman mutu ini? Status akan diubah menjadi "Dimusnahkan" tanpa menghapus file.')
+                    ->modalDescription('Pilih cara pemusnahan untuk rekaman ini. Status akan diubah menjadi "Dimusnahkan" dan dicatat ke dalam Berita Acara Pemusnahan Rekaman (BAPR).')
                     ->modalSubmitActionLabel('Ya, Musnahkan')
-                    ->action(function (QualityRecord $record): void {
-                        $record->update(['status' => 'Dimusnahkan']);
+                    ->action(function (QualityRecord $record, array $data): void {
+                        $user = auth()->user();
+                        $manager = \App\Models\User::where('jabatan', 'manager')->first()
+                            ?? \App\Models\User::where('role', 'manajemen')->first();
+
+                        $record->update([
+                            'status' => 'Dimusnahkan',
+                            'destruction_date' => now()->toDateString(),
+                            'destruction_method' => $data['method'],
+                            'destruction_operator_id' => $user->id,
+                        ]);
+
+                        $group = $record->assignToDestructionGroup(
+                            method: $data['method'],
+                            operatorId: $user->id,
+                            acknowledgedById: $manager?->id
+                        );
 
                         Notification::make()
                             ->title('Rekaman mutu berhasil dimusnahkan')
+                            ->body("Tergabung dalam Berita Acara {$group->bapr_number}.")
                             ->success()
                             ->send();
                     }),
@@ -97,7 +124,7 @@ class QualityRecordsTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkAction::make('destroy')
-                        ->label('Musnahkan')
+                        ->label('Musnahkan Terpilih')
                         ->icon('heroicon-m-fire')
                         ->color('danger')
                         ->visible(function (Table $table): bool {
@@ -108,19 +135,49 @@ class QualityRecordsTable
                                 && $user
                                 && in_array($user->role, ['admin', 'manajemen']);
                         })
-                        ->requiresConfirmation()
-                        ->modalHeading('Musnahkan Rekaman Mutu')
-                        ->modalDescription('Apakah Anda yakin ingin memusnahkan rekaman mutu yang dipilih? Status akan diubah menjadi "Dimusnahkan" tanpa menghapus file.')
-                        ->modalSubmitActionLabel('Ya, Musnahkan')
-                        ->action(function (Collection $records): void {
-                            $records->each(function (QualityRecord $record): void {
-                                if (auth()->user()->can('destroy', $record)) {
-                                    $record->update(['status' => 'Dimusnahkan']);
+                        ->form([
+                            \Filament\Forms\Components\Select::make('method')
+                                ->label('Cara / Metode Pemusnahan')
+                                ->options([
+                                    'Dihapus dari server & backup' => 'Dihapus dari server & backup',
+                                    'Dicacah' => 'Dicacah',
+                                    'Diformat' => 'Diformat',
+                                    'Dibakar' => 'Dibakar',
+                                ])
+                                ->default('Dihapus dari server & backup')
+                                ->required(),
+                        ])
+                        ->modalHeading('Musnahkan Rekaman Mutu Terpilih')
+                        ->modalDescription('Apakah Anda yakin ingin memusnahkan seluruh rekaman mutu yang dipilih? Status akan diubah menjadi "Dimusnahkan" dan dikelompokkan ke dalam satu Berita Acara Pemusnahan Rekaman (BAPR).')
+                        ->modalSubmitActionLabel('Ya, Musnahkan Semua')
+                        ->action(function (Collection $records, array $data): void {
+                            $user = auth()->user();
+                            $method = $data['method'];
+                            $manager = \App\Models\User::where('jabatan', 'manager')->first()
+                                ?? \App\Models\User::where('role', 'manajemen')->first();
+
+                            $group = \App\Models\QualityRecordDestructionGroup::findOrCreateOpenGroupForDate(
+                                now(),
+                                $method,
+                                $user->id,
+                                $manager?->id
+                            );
+
+                            \Illuminate\Support\Facades\DB::transaction(function () use ($records, $group, $method, $user) {
+                                foreach ($records as $record) {
+                                    $record->update([
+                                        'status' => 'Dimusnahkan',
+                                        'quality_record_destruction_group_id' => $group->id,
+                                        'destruction_date' => $group->destruction_date,
+                                        'destruction_method' => $method,
+                                        'destruction_operator_id' => $user->id,
+                                    ]);
                                 }
                             });
 
                             Notification::make()
                                 ->title('Rekaman mutu berhasil dimusnahkan')
+                                ->body("{$records->count()} rekaman berhasil dikelompokkan ke dalam Berita Acara {$group->bapr_number}.")
                                 ->success()
                                 ->send();
                         })

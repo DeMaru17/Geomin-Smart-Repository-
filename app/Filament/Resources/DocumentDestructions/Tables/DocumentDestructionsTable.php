@@ -2,12 +2,14 @@
 
 namespace App\Filament\Resources\DocumentDestructions\Tables;
 
+use App\Models\DocumentDestructionGroup;
 use App\Models\DocumentRevision;
 use App\Services\DocumentDestructionExportService;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Tables\Columns\TextColumn;
@@ -195,30 +197,6 @@ class DocumentDestructionsTable
                         }
                     }),
 
-                Action::make('cetak_bapd')
-                    ->label('Cetak BAPD')
-                    ->icon('heroicon-m-arrow-down-tray')
-                    ->color('success')
-                    ->visible(fn($record) => $record->status === 'Disetujui')
-                    ->action(function ($record) {
-                        $service = new DocumentDestructionExportService;
-                        $result = $service->export($record);
-
-                        if ($result === false) {
-                            Notification::make()
-                                ->title('File template tidak tersedia')
-                                ->body('File template Template bapd.docx tidak ditemukan di storage.')
-                                ->danger()
-                                ->send();
-
-                            return;
-                        }
-
-                        $filename = $service->getFilename($record);
-
-                        return response()->download($result, $filename)->deleteFileAfterSend();
-                    }),
-
                 DeleteAction::make()
                     ->visible(function ($record) {
                         $user = auth()->user();
@@ -236,6 +214,19 @@ class DocumentDestructionsTable
                             $action->cancel();
                         }
                     }),
+            ])
+            ->headerActions([
+                Action::make('cetak_bapd_tanggal')
+                    ->label('Cetak BAPD per Tanggal')
+                    ->icon('heroicon-m-arrow-down-tray')
+                    ->color('success')
+                    ->visible(fn () => in_array(auth()->user()?->role, ['admin', 'manajemen']))
+                    ->modalHeading('Cetak BAPD')
+                    ->modalDescription('Pilih tanggal yang ditandai pada kalender atau cari BAPD melalui daftar.')
+                    ->modalWidth('5xl')
+                    ->modalContent(view('filament.resources.document-destructions.bapd-modal'))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Tutup'),
             ])
             ->defaultSort('created_at', 'desc')
             ->defaultPaginationPageOption(10)
