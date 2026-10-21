@@ -3,10 +3,19 @@
 namespace App\Filament\Resources\DocumentReviews\Tables;
 
 use App\Models\Document;
+use App\Models\DocumentReview;
 use App\Services\DocumentReviewService;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 
 class DocumentReviewsTable
 {
@@ -92,6 +101,92 @@ class DocumentReviewsTable
             ])
             ->actions([
                 ViewAction::make(),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    BulkAction::make('bulk_review')
+                        ->label('Catat Kaji Ulang Masal')
+                        ->icon('heroicon-o-clipboard-document-check')
+                        ->color('primary')
+                        ->visible(fn (): bool => in_array(auth()->user()?->role, ['admin', 'manajemen']))
+                        ->form([
+                            DatePicker::make('review_date')
+                                ->label('Tanggal Kaji Ulang')
+                                ->required()
+                                ->default(now()),
+
+                            Select::make('evaluation_status')
+                                ->label('Status Evaluasi')
+                                ->required()
+                                ->default('Dipertahankan')
+                                ->options([
+                                    'Dipertahankan' => 'Dipertahankan',
+                                    'Perlu direvisi' => 'Perlu direvisi',
+                                    'Perlu diperbaharui' => 'Perlu diperbaharui',
+                                    'Perlu ditarik' => 'Perlu ditarik',
+                                    'Perlu dimusnahkan' => 'Perlu dimusnahkan',
+                                ])
+                                ->live(),
+
+                            Select::make('destruction_method')
+                                ->label('Metode Pemusnahan / Penarikan')
+                                ->options([
+                                    'Penarikan Akses Digital' => 'Penarikan Akses Digital',
+                                    'Penghancuran Dokumen Fisik/Cetak' => 'Penghancuran Dokumen Fisik/Cetak',
+                                    'Lainnya' => 'Lainnya',
+                                ])
+                                ->default('Penarikan Akses Digital')
+                                ->visible(fn ($get): bool => $get('evaluation_status') === 'Perlu dimusnahkan')
+                                ->required(fn ($get): bool => $get('evaluation_status') === 'Perlu dimusnahkan'),
+
+                            Textarea::make('remarks')
+                                ->label('Catatan')
+                                ->placeholder('Masukkan catatan kaji ulang untuk dokumen-dokumen yang dipilih...')
+                                ->maxLength(1000),
+                        ])
+                        ->modalHeading('Catat Kaji Ulang Masal')
+                        ->modalDescription('Catat hasil evaluasi kaji ulang untuk seluruh dokumen yang dipilih.')
+                        ->modalSubmitActionLabel('Simpan Kaji Ulang')
+                        ->action(function (Collection $records, array $data) use ($service): void {
+                            $destructionCount = 0;
+
+                            DB::transaction(function () use ($records, $data, $service, &$destructionCount) {
+                                foreach ($records as $record) {
+                                    DocumentReview::create([
+                                        'document_id' => $record->id,
+                                        'review_date' => $data['review_date'],
+                                        'reviewer_id' => auth()->id(),
+                                        'evaluation_status' => $data['evaluation_status'],
+                                        'remarks' => $data['remarks'] ?? null,
+                                    ]);
+
+                                    if ($data['evaluation_status'] === 'Perlu dimusnahkan') {
+                                        $destruction = $service->createDestructionRequestIfNeeded(
+                                            document: $record,
+                                            proposerId: auth()->id(),
+                                            reason: $data['remarks'] ?? null,
+                                            method: $data['destruction_method'] ?? 'Penarikan Akses Digital'
+                                        );
+
+                                        if ($destruction && $destruction->wasRecentlyCreated) {
+                                            $destructionCount++;
+                                        }
+                                    }
+                                }
+                            });
+
+                            $body = "{$records->count()} dokumen berhasil dikaji ulang dengan status '{$data['evaluation_status']}'.";
+                            if ($destructionCount > 0) {
+                                $body .= " Sebanyak {$destructionCount} pengajuan pemusnahan dokumen otomatis dibuat (Pending).";
+                            }
+
+                            Notification::make()
+                                ->title('Kaji ulang masal berhasil dicatat')
+                                ->body($body)
+                                ->success()
+                                ->send();
+                        }),
+                ]),
             ])
             ->emptyStateHeading('Tidak ada dokumen yang perlu dikaji ulang')
             ->emptyStateDescription('Semua dokumen masih dalam periode aman untuk kaji ulang.');

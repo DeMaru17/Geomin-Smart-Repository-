@@ -5,6 +5,7 @@ namespace App\Filament\Resources\DocumentReviews\Infolists;
 use App\Filament\Resources\DocumentDestructions\DocumentDestructionResource;
 use App\Models\ChangeRequest;
 use App\Models\Document;
+use App\Models\DocumentDestruction;
 use App\Services\DocumentReviewService;
 use Filament\Actions\Action as InfolistAction;
 use Filament\Forms\Components\DatePicker;
@@ -261,14 +262,34 @@ class DocumentReviewInfolist
     private static function buatBaPemusnahanAction(): InfolistAction
     {
         return InfolistAction::make('buat_ba_pemusnahan')
-            ->label('Buat BA Pemusnahan')
-            ->icon('heroicon-m-trash')
-            ->color('danger')
+            ->label(function ($record) {
+                $hasDestruction = DocumentDestruction::where('document_id', $record->document_id)->exists();
+
+                return $hasDestruction ? 'Lihat Pengajuan Pemusnahan' : 'Buat BA Pemusnahan';
+            })
+            ->icon(function ($record) {
+                $hasDestruction = DocumentDestruction::where('document_id', $record->document_id)->exists();
+
+                return $hasDestruction ? 'heroicon-m-arrow-top-right-on-square' : 'heroicon-m-trash';
+            })
+            ->color(function ($record) {
+                $hasDestruction = DocumentDestruction::where('document_id', $record->document_id)->exists();
+
+                return $hasDestruction ? 'info' : 'danger';
+            })
             ->visible(fn($record) => $record->evaluation_status === 'Perlu dimusnahkan')
-            ->url(fn($record) => DocumentDestructionResource::getUrl('create', [
-                'document_id' => $record->document_id,
-                'reason' => $record->remarks,
-            ]));
+            ->url(function ($record) {
+                $hasDestruction = DocumentDestruction::where('document_id', $record->document_id)->exists();
+
+                if ($hasDestruction) {
+                    return DocumentDestructionResource::getUrl('index');
+                }
+
+                return DocumentDestructionResource::getUrl('create', [
+                    'document_id' => $record->document_id,
+                    'reason' => $record->remarks,
+                ]);
+            });
     }
 
     private static function getEvaluationStatusColor(?string $status): ?string

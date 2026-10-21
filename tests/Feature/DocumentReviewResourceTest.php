@@ -276,4 +276,111 @@ class DocumentReviewResourceTest extends TestCase
 
         $this->assertTrue(DocumentReviewResource::canAccess());
     }
+
+    /**
+     * Admin can bulk record reviews for multiple documents with remarks.
+     */
+    public function test_admin_can_bulk_record_document_reviews_with_remarks(): void
+    {
+        $doc2 = Document::factory()->create();
+        DocumentRevision::factory()->create([
+            'document_id' => $doc2->id,
+            'status' => 'Published',
+            'revision_date' => now()->subMonths(8),
+        ]);
+
+        $this->actingAs($this->adminUser);
+
+        Livewire::test(ListDocumentReviews::class)
+            ->callTableBulkAction('bulk_review', [$this->document, $doc2], [
+                'review_date' => '2026-10-21',
+                'evaluation_status' => 'Dipertahankan',
+                'remarks' => 'Kaji ulang berkala serentak tahunan - dokumen tetap relevan',
+            ]);
+
+        $this->assertDatabaseHas('document_reviews', [
+            'document_id' => $this->document->id,
+            'review_date' => '2026-10-21',
+            'reviewer_id' => $this->adminUser->id,
+            'evaluation_status' => 'Dipertahankan',
+            'remarks' => 'Kaji ulang berkala serentak tahunan - dokumen tetap relevan',
+        ]);
+
+        $this->assertDatabaseHas('document_reviews', [
+            'document_id' => $doc2->id,
+            'review_date' => '2026-10-21',
+            'reviewer_id' => $this->adminUser->id,
+            'evaluation_status' => 'Dipertahankan',
+            'remarks' => 'Kaji ulang berkala serentak tahunan - dokumen tetap relevan',
+        ]);
+    }
+
+    /**
+     * When review status is 'Perlu dimusnahkan', DocumentDestruction is automatically created.
+     */
+    public function test_catat_kaji_ulang_perlu_dimusnahkan_automatically_creates_document_destruction(): void
+    {
+        $this->actingAs($this->adminUser);
+
+        Livewire::test(ListDocumentReviews::class)
+            ->callAction('catat_kaji_ulang', data: [
+                'document_id' => $this->document->id,
+                'review_date' => '2026-10-21',
+                'evaluation_status' => 'Perlu dimusnahkan',
+                'destruction_method' => 'Penarikan Akses Digital',
+                'remarks' => 'Dokumen sudah tidak terpakai dan harus dimusnahkan',
+            ]);
+
+        $this->assertDatabaseHas('document_reviews', [
+            'document_id' => $this->document->id,
+            'evaluation_status' => 'Perlu dimusnahkan',
+        ]);
+
+        $this->assertDatabaseHas('document_destructions', [
+            'document_id' => $this->document->id,
+            'proposer_id' => $this->adminUser->id,
+            'method' => 'Penarikan Akses Digital',
+            'status' => 'Pending',
+            'reason' => 'Dokumen sudah tidak terpakai dan harus dimusnahkan',
+        ]);
+    }
+
+    /**
+     * When bulk review status is 'Perlu dimusnahkan', DocumentDestruction is automatically created for each document.
+     */
+    public function test_bulk_review_perlu_dimusnahkan_automatically_creates_document_destructions_for_all(): void
+    {
+        $doc2 = Document::factory()->create();
+        DocumentRevision::factory()->create([
+            'document_id' => $doc2->id,
+            'status' => 'Published',
+            'revision_date' => now()->subMonths(10),
+        ]);
+
+        $this->actingAs($this->adminUser);
+
+        Livewire::test(ListDocumentReviews::class)
+            ->callTableBulkAction('bulk_review', [$this->document, $doc2], [
+                'review_date' => '2026-10-21',
+                'evaluation_status' => 'Perlu dimusnahkan',
+                'destruction_method' => 'Penghancuran Dokumen Fisik/Cetak',
+                'remarks' => 'Pemusnahan dokumen masal hasil kaji ulang',
+            ]);
+
+        $this->assertDatabaseHas('document_destructions', [
+            'document_id' => $this->document->id,
+            'proposer_id' => $this->adminUser->id,
+            'method' => 'Penghancuran Dokumen Fisik/Cetak',
+            'status' => 'Pending',
+            'reason' => 'Pemusnahan dokumen masal hasil kaji ulang',
+        ]);
+
+        $this->assertDatabaseHas('document_destructions', [
+            'document_id' => $doc2->id,
+            'proposer_id' => $this->adminUser->id,
+            'method' => 'Penghancuran Dokumen Fisik/Cetak',
+            'status' => 'Pending',
+            'reason' => 'Pemusnahan dokumen masal hasil kaji ulang',
+        ]);
+    }
 }

@@ -54,25 +54,66 @@ class ViewDocumentReview extends ViewRecord
                         'Perlu ditarik' => 'Perlu ditarik',
                         'Perlu dimusnahkan' => 'Perlu dimusnahkan',
                         'Dipertahankan' => 'Dipertahankan',
-                    ]),
+                    ])
+                    ->live(),
+
+                Select::make('destruction_method')
+                    ->label('Metode Pemusnahan / Penarikan')
+                    ->options([
+                        'Penarikan Akses Digital' => 'Penarikan Akses Digital',
+                        'Penghancuran Dokumen Fisik/Cetak' => 'Penghancuran Dokumen Fisik/Cetak',
+                        'Lainnya' => 'Lainnya',
+                    ])
+                    ->default('Penarikan Akses Digital')
+                    ->visible(fn ($get): bool => $get('evaluation_status') === 'Perlu dimusnahkan')
+                    ->required(fn ($get): bool => $get('evaluation_status') === 'Perlu dimusnahkan'),
 
                 Textarea::make('remarks')
                     ->label('Catatan')
                     ->maxLength(1000),
             ])
             ->action(function (array $data): void {
-                DocumentReview::create([
-                    'document_id' => $this->record->id,
-                    'review_date' => $data['review_date'],
-                    'reviewer_id' => auth()->id(),
-                    'evaluation_status' => $data['evaluation_status'],
-                    'remarks' => $data['remarks'] ?? null,
-                ]);
+                $service = app(\App\Services\DocumentReviewService::class);
+                $hasDestruction = false;
 
-                Notification::make()
-                    ->title('Kaji ulang berhasil dicatat')
-                    ->success()
-                    ->send();
+                \Illuminate\Support\Facades\DB::transaction(function () use ($data, $service, &$hasDestruction) {
+                    DocumentReview::create([
+                        'document_id' => $this->record->id,
+                        'review_date' => $data['review_date'],
+                        'reviewer_id' => auth()->id(),
+                        'evaluation_status' => $data['evaluation_status'],
+                        'remarks' => $data['remarks'] ?? null,
+                    ]);
+
+                    if ($data['evaluation_status'] === 'Perlu dimusnahkan') {
+                        $destruction = $service->createDestructionRequestIfNeeded(
+                            document: $this->record,
+                            proposerId: auth()->id(),
+                            reason: $data['remarks'] ?? null,
+                            method: $data['destruction_method'] ?? 'Penarikan Akses Digital'
+                        );
+
+                        if ($destruction && $destruction->wasRecentlyCreated) {
+                            $hasDestruction = true;
+                        }
+                    }
+                });
+
+                $title = 'Kaji ulang berhasil dicatat';
+                $body = null;
+                if ($hasDestruction) {
+                    $body = 'Pengajuan pemusnahan dokumen otomatis dibuat dan masuk ke antrean persetujuan (Pending).';
+                }
+
+                $notification = Notification::make()
+                    ->title($title)
+                    ->success();
+
+                if ($body) {
+                    $notification->body($body);
+                }
+
+                $notification->send();
             });
     }
 }

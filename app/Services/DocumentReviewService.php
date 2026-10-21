@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Document;
+use App\Models\DocumentDestruction;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -106,5 +107,32 @@ class DocumentReviewService
                 $query->whereIn('status', ['Published', 'Terbit']);
             })
             ->get();
+    }
+
+    /**
+     * Buat draf pengajuan pemusnahan dokumen otomatis jika status evaluasi adalah 'Perlu dimusnahkan'
+     * dan belum ada pengajuan pemusnahan yang berstatus Pending.
+     */
+    public function createDestructionRequestIfNeeded(
+        Document $document,
+        int $proposerId,
+        ?string $reason = null,
+        ?string $method = 'Penarikan Akses Digital'
+    ): ?DocumentDestruction {
+        $existing = DocumentDestruction::where('document_id', $document->id)
+            ->where('status', 'Pending')
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        return DocumentDestruction::create([
+            'document_id' => $document->id,
+            'proposer_id' => $proposerId,
+            'reason' => ! empty($reason) ? $reason : 'Hasil Kaji Ulang Dokumen: Perlu dimusnahkan',
+            'method' => $method ?: 'Penarikan Akses Digital',
+            'status' => 'Pending',
+        ]);
     }
 }
