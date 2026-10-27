@@ -23,6 +23,7 @@ class ExtractPdfTextJob implements ShouldQueue
     public function __construct(int|string $revisionId)
     {
         $this->revisionId = $revisionId;
+        $this->afterCommit = true;
     }
 
     public function handle(): void
@@ -38,9 +39,9 @@ class ExtractPdfTextJob implements ShouldQueue
 
         try {
             // Path ke pdftotext (fleksibel via env: Windows lokal / Linux production)
-            $text = (new Pdf(env('PDFTOTEXT_PATH', '/usr/bin/pdftotext')))
-                ->setPdf($absolutePath)
-                ->text();
+            $binary = $this->resolvePdfToTextBinary();
+            $pdf = $binary ? new Pdf($binary) : new Pdf();
+            $text = $pdf->setPdf($absolutePath)->text();
 
             // 0. Pastikan teks valid UTF-8 (pdftotext bisa menghasilkan byte non-UTF-8)
             $text = mb_convert_encoding($text, 'UTF-8', 'UTF-8');
@@ -61,5 +62,37 @@ class ExtractPdfTextJob implements ShouldQueue
             // Jika gagal, catat di log Laravel agar bisa diinvestigasi
             Log::error("Gagal mengekstrak teks PDF untuk Revisi ID {$this->revisionId}: " . $e->getMessage());
         }
+    }
+
+    /**
+     * Menentukan path binary pdftotext yang valid pada sistem (Windows Laragon/Poppler/Xpdf atau Linux/macOS).
+     */
+    protected function resolvePdfToTextBinary(): ?string
+    {
+        // 1. Cek dari environment variable jika disetel secara eksplisit
+        $envPath = env('PDFTOTEXT_PATH');
+        if (! empty($envPath) && (file_exists($envPath) || is_executable($envPath))) {
+            return $envPath;
+        }
+
+        // 2. Deteksi lokasi umum binary pdftotext di Windows & Laragon
+        $candidates = [
+            'C:\\laragon\\bin\\git\\mingw64\\bin\\pdftotext.exe',
+            'C:\\laragon\\bin\\git\\usr\\bin\\pdftotext.exe',
+            'C:\\Program Files\\xpdf-tools-win\\bin64\\pdftotext.exe',
+            'C:\\Program Files\\poppler\\bin\\pdftotext.exe',
+            '/usr/bin/pdftotext',
+            '/usr/local/bin/pdftotext',
+            '/opt/homebrew/bin/pdftotext',
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (file_exists($candidate)) {
+                return $candidate;
+            }
+        }
+
+        // 3. Fallback: null agar Spatie\PdfToText\Pdf mencoba mencari sendiri di PATH
+        return null;
     }
 }

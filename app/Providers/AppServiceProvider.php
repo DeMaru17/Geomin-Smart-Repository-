@@ -31,5 +31,15 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('login', function (Request $request) {
             return Limit::perMinute(5)->by($request->ip());
         });
+
+        \Illuminate\Support\Facades\Gate::policy(
+            \App\Models\DocumentImportBatch::class,
+            \App\Policies\DocumentImportBatchPolicy::class
+        );
+
+        \Illuminate\Support\Facades\Gate::policy(
+            \App\Models\DocumentImportItem::class,
+            \App\Policies\DocumentImportItemPolicy::class
+        );
     }
 }
