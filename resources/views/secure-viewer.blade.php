@@ -19,27 +19,85 @@
 </head>
 <body class="bg-[#1e293b] text-white h-screen flex flex-col overflow-hidden" oncontextmenu="return false;">
 
-    {{-- Navbar --}}
-    <div class="bg-[#0f172a] border-b border-slate-700 flex items-center justify-between px-6 py-4 shadow-md z-10">
-        <div class="flex items-center space-x-4">
-            <a href="javascript:history.back()" class="text-slate-400 hover:text-white transition flex items-center">
-                <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                Kembali
-            </a>
-            <div class="h-6 w-px bg-slate-600 mx-2"></div>
-            <h1 class="font-semibold text-lg flex items-center">
-                <span class="bg-indigo-600 text-xs px-2 py-1 rounded mr-3">{{ $revision->document->document_number ?? 'No. Dokumen' }}</span>
-                {{ $revision->document->title ?? 'Judul Dokumen' }}
-                <span class="text-slate-400 font-normal ml-2 text-sm">Rev. {{ $revision->revision_number }}</span>
-            </h1>
+    {{-- Responsive Navbar --}}
+    <header class="bg-[#0f172a] border-b border-slate-700 px-4 md:px-6 py-3 md:py-4 shadow-md z-10 shrink-0">
+    
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    
+            {{-- Informasi dokumen --}}
+            <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 min-w-0 flex-1">
+    
+                {{-- Baris navigasi --}}
+                <div class="flex items-center justify-between md:justify-start gap-3 shrink-0">
+    
+                    <a href="javascript:history.back()"
+                       class="text-slate-400 hover:text-white transition flex items-center shrink-0">
+    
+                        <svg class="w-6 h-6 mr-1"
+                             fill="none"
+                             stroke="currentColor"
+                             viewBox="0 0 24 24">
+                            <path stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M10 19l-7-7m0 0l7-7m-7 7h18">
+                            </path>
+                        </svg>
+    
+                        <span class="text-sm md:text-base">Kembali</span>
+                    </a>
+    
+                    <div class="h-6 w-px bg-slate-600 hidden md:block"></div>
+    
+                    <span class="bg-indigo-600 text-xs md:text-sm font-semibold px-2.5 py-1.5 rounded whitespace-nowrap">
+                        {{ $revision->document->document_number ?? 'No. Dokumen' }}
+                    </span>
+    
+                    {{-- Status keamanan khusus mobile --}}
+                    <span class="md:hidden border border-emerald-500 text-emerald-400 px-2 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap">
+                        <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1"></span>
+                        Aman Aktif
+                    </span>
+    
+                </div>
+    
+                {{-- Judul dan revisi --}}
+                <div class="min-w-0 flex flex-wrap md:flex-nowrap md:items-center gap-x-2 gap-y-1">
+    
+                    <h1 class="font-semibold text-sm md:text-lg leading-snug min-w-0
+                               line-clamp-2 break-words">
+                        {{ $revision->document->title ?? 'Judul Dokumen' }}
+                    </h1>
+    
+                    <span class="text-slate-400 font-normal text-xs md:text-sm whitespace-nowrap shrink-0">
+                        Rev. {{ $revision->revision_number }}
+                    </span>
+    
+                </div>
+    
+            </div>
+    
+            {{-- Status keamanan khusus desktop --}}
+            <div class="hidden md:flex shrink-0">
+    
+                <span class="border border-emerald-500 text-emerald-400 px-3 py-1 rounded-full text-xs font-bold items-center">
+                    <svg class="w-4 h-4 mr-1 inline"
+                         fill="none"
+                         stroke="currentColor"
+                         viewBox="0 0 24 24">
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.956 11.956 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
+                        </path>
+                    </svg>
+                    Mode Aman Aktif
+                </span>
+    
+            </div>
+    
         </div>
-        <div>
-            <span class="border border-emerald-500 text-emerald-400 px-3 py-1 rounded-full text-xs font-bold flex items-center">
-                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.956 11.956 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-                Mode Aman Aktif
-            </span>
-        </div>
-    </div>
+    </header>
 
     {{-- Banner peringatan --}}
     <div class="bg-amber-900/40 border-b border-amber-700 text-amber-500 text-sm px-6 py-2.5 flex items-center justify-center shadow-inner z-10">
